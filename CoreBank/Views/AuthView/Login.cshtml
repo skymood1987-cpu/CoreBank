@@ -1,0 +1,530 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MinCoreBank</title>
+    <style>
+        /* UPDATED COLORS TO MATCH HEADER */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #1a3a6c, #2c5282); /* SAME AS HEADER */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 420px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+            .logo h1 {
+                color: #1a3a6c; /* DARK BLUE FROM HEADER */
+                margin: 0;
+                font-size: 2rem;
+                font-weight: 700;
+            }
+
+            .logo p {
+                color: #2c5282; /* LIGHTER BLUE FROM HEADER */
+                margin-top: 0.5rem;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1a3a6c; /* DARK BLUE */
+            font-size: 0.95rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border: 2px solid #e1e1e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+
+            input[type="text"]:focus,
+            input[type="password"]:focus {
+                outline: none;
+                border-color: #1a3a6c; /* DARK BLUE */
+                box-shadow: 0 0 0 3px rgba(26, 58, 108, 0.1);
+                background-color: white;
+            }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(to right, #1a3a6c, #2c5282); /* SAME AS HEADER */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+            button:hover {
+                background: linear-gradient(to right, #16325f, #264a78); /* DARKER VERSION */
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(26, 58, 108, 0.4);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+            button:disabled {
+                background: #cccccc;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+        .error-message {
+            color: #d32f2f;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+            padding: 0.75rem;
+            background-color: #ffebee;
+            border-radius: 6px;
+            border-left: 4px solid #d32f2f;
+            font-size: 0.9rem;
+        }
+
+        .success-message {
+            color: #2e7d32;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+            padding: 0.75rem;
+            background-color: #e8f5e9;
+            border-radius: 6px;
+            border-left: 4px solid #2e7d32;
+            font-size: 0.9rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @@keyframes spin {
+            to
+
+        {
+            transform: rotate(360deg);
+        }
+
+        }
+
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(26, 58, 108, 0.9); /* DARK BLUE */
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            z-index: 9999;
+            max-width: 300px;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(26, 58, 108, 0.8); /* DARK BLUE */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            z-index: 9998;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+            .debug-toggle:hover {
+                background: rgba(44, 82, 130, 0.9); /* LIGHTER BLUE */
+            }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e1e1e1;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+            .form-footer p {
+                margin: 0.25rem 0;
+            }
+
+        #versionInfo {
+            color: #1a3a6c; /* DARK BLUE */
+            font-weight: 600;
+        }
+
+        /* Password visibility toggle */
+        .password-container {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            width: auto;
+            padding: 0;
+            font-size: 0.9rem;
+        }
+
+            .password-toggle:hover {
+                color: #1a3a6c;
+            }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>MinCoreBank</h1>
+           
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autocomplete="username" placeholder="ادخل اسم المستخدم">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="ادخل كلمة المرور">
+                    <button type="button" class="password-toggle" id="togglePassword">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" id="loginButton">
+                <span id="submitText">تسجيل الدخول</span>
+            </button>
+        </form>
+
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <div class="form-footer">
+            <p>للمساعدة، يرجى الاتصال على قسم تكنلوجيا المعلومات/شعبة البرمجة على الرقم 135</p>
+            <p id="versionInfo">Version: 1.1</p>
+        </div>
+    </div>
+
+    <!-- Debug info panel (hidden by default) -->
+    <div id="debugInfo" class="debug-info"></div>
+    <button id="debugToggle" class="debug-toggle" title="Toggle debug info"></button>
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        // Debug mode control
+        const debugMode = window.location.search.includes('debug=true');
+        let debugEnabled = debugMode;
+
+        // Elements
+        const loginForm = document.getElementById('loginForm');
+        const loginButton = document.getElementById('loginButton');
+        const submitText = document.getElementById('submitText');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugToggle = document.getElementById('debugToggle');
+        const versionInfo = document.getElementById('versionInfo');
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+
+        // Set version info
+        versionInfo.textContent = `version: ${1.1}`;
+
+        // Password visibility toggle
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            // Toggle eye icon
+            const icon = this.querySelector('i');
+            icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+            this.title = type === 'password' ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور';
+        });
+
+        // Debug logging function
+        function debugLog(message, data = null) {
+            if (!debugEnabled) return;
+
+            console.log(`[Login Debug] ${message}`, data || '');
+
+            // Update debug info panel
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<strong>${timestamp}:</strong> ${message}`;
+            debugInfo.appendChild(logEntry);
+
+            // Keep only last 10 entries
+            const entries = debugInfo.children;
+            if (entries.length > 10) {
+                debugInfo.removeChild(entries[0]);
+            }
+        }
+
+        // Toggle debug panel
+        debugToggle.addEventListener('click', () => {
+            debugEnabled = !debugEnabled;
+            debugInfo.style.display = debugEnabled ? 'block' : 'none';
+            debugToggle.style.background = debugEnabled ?
+                'rgba(44, 82, 130, 0.9)' : 'rgba(26, 58, 108, 0.8)';
+            debugToggle.title = debugEnabled ? 'وضع التصحيح مفعل' : 'وضع التصحيح معطل';
+        });
+
+        // Show debug panel if debug mode is enabled
+        if (debugMode) {
+            debugInfo.style.display = 'block';
+            debugToggle.style.background = 'rgba(44, 82, 130, 0.9)';
+        }
+
+        // Initial debug log
+        debugLog('Login page loaded');
+        debugLog('URL:', window.location.href);
+        debugLog('Cookies present:', document.cookie ? 'Yes' : 'No');
+
+        // Check authentication status on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            debugLog('جاري التحقق من حالة المصادقة...');
+
+            try {
+                const response = await fetch('/api/Auth/check-auth', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const authData = await response.json();
+                debugLog('Auth check response:', authData);
+
+                if (authData.authenticated) {
+                    debugLog('المستخدم مصادق بالفعل، جاري التوجيه...');
+                    setTimeout(() => {
+                        window.location.href = '/GlTransactionsView/index';
+                    }, 100);
+                }
+            } catch (error) {
+                debugLog('Auth check error:', error.message);
+            }
+        });
+
+        // Login form submission
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Reset messages
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+
+            // Validation
+            if (!username || !password) {
+                showError('الرجاء إدخال اسم المستخدم وكلمة المرور.');
+                return;
+            }
+
+            // Set loading state
+            setLoadingState(true);
+
+            debugLog('بدء عملية تسجيل الدخول...', { username: username });
+
+            try {
+                const startTime = Date.now();
+
+                // Make login request
+                const response = await fetch('/api/Auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        Password: password
+                    }),
+                    credentials: 'include'
+                });
+
+                const responseTime = Date.now() - startTime;
+                debugLog(`تم استقبال الرد في ${responseTime}ms`, {
+                    status: response.status,
+                    statusText: response.statusText
+                });
+
+                const data = await response.json();
+                debugLog('Login response data:', data);
+
+                if (response.ok && data.success) {
+                    debugLog('نجاح تسجيل الدخول');
+
+                    if (data.requiresPasswordChange) {
+                        debugLog('تغيير كلمة المرور مطلوب، جاري التوجيه...');
+                        showSuccess('تغيير كلمة المرور مطلوب. جاري التوجيه...');
+
+                        await verifyAuthAndRedirect(data.redirectUrl || '/AuthView/ChangePassword');
+                    } else {
+                        debugLog('تسجيل الدخول العادي ناجح، جاري التحقق من المصادقة...');
+                        showSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+
+                        await verifyAuthAndRedirect(data.redirectUrl || '/GlTransactionsView/index');
+                    }
+                } else {
+                    debugLog('فشل تسجيل الدخول:', data.message);
+                    showError(data.message || 'فشل تسجيل الدخول. الرجاء المحاولة مرة أخرى.');
+                    setLoadingState(false);
+                }
+            } catch (error) {
+                debugLog('خطأ في الشبكة:', error.message);
+                showError('خطأ في الاتصال بالشبكة. الرجاء التحقق من الاتصال والمحاولة مرة أخرى.');
+                setLoadingState(false);
+            }
+        });
+
+        // Helper function to verify authentication and redirect
+        async function verifyAuthAndRedirect(redirectUrl) {
+            debugLog('التحقق من المصادقة قبل التوجيه...');
+
+            try {
+                const authCheck = await fetch('/api/Auth/check-auth', {
+                    credentials: 'include'
+                });
+
+                const authData = await authCheck.json();
+                debugLog('نتيجة التحقق من المصادقة:', authData);
+
+                if (authData.authenticated) {
+                    debugLog('تم التحقق من المصادقة، جاري التوجيه إلى:', redirectUrl);
+                    setTimeout(() => {
+                        window.location.href = redirectUrl + '?t=' + Date.now();
+                    }, 500);
+                } else {
+                    debugLog('فشل التحقق من المصادقة');
+                    showError('فشل التحقق من المصادقة. الرجاء المحاولة مرة أخرى.');
+                    setLoadingState(false);
+                }
+            } catch (error) {
+                debugLog('خطأ في التحقق من المصادقة:', error.message);
+                setTimeout(() => {
+                    window.location.href = redirectUrl + '?t=' + Date.now();
+                }, 500);
+            }
+        }
+
+        // Helper function to show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Helper function to show success message
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+        }
+
+        // Helper function to set loading state
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                loginButton.disabled = true;
+                const spinner = document.createElement('span');
+                spinner.className = 'loading-spinner';
+                submitText.textContent = ' جاري تسجيل الدخول...';
+                submitText.prepend(spinner);
+            } else {
+                loginButton.disabled = false;
+                submitText.textContent = 'تسجيل الدخول';
+            }
+        }
+
+        // Auto-focus username field
+        document.getElementById('username').focus();
+
+        // Handle Enter key in password field
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !loginButton.disabled) {
+                loginForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Add keyboard shortcut for debug (Ctrl+Shift+D)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                debugToggle.click();
+            }
+        });
+    </script>
+</body>
+</html>

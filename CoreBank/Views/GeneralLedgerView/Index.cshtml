@@ -1,0 +1,461 @@
+﻿@model IEnumerable<MinCoreBank.Models.GeneralLedgerAccount>
+
+@{
+    ViewData["Title"] = "إدارة الاستاذ العام ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-exchange-alt fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+        <a href="@Url.Action("Create", "GeneralLedgerView")" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>إنشاء حساب جديد
+        </a>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="banking-card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>تصفية الحسابات</h5>
+        </div>
+        <div class="card-body">
+            <form id="filterForm" method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="startDate" class="form-label">من تاريخ</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate">
+                </div>
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label">إلى تاريخ</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>بحث
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Accounts Table -->
+    <div class="banking-card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="ابحث باسم الحساب أو الرقم...">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter me-1"></i>الحالة
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item filter-option" data-status="all">جميع الحسابات</a></li>
+                            <li><a class="dropdown-item filter-option" data-status="active">نشطة فقط</a></li>
+                            <li><a class="dropdown-item filter-option" data-status="closed">مغلقة فقط</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover banking-table" id="accountsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>رقم الحساب</th>
+                            <th>الاسم بالعربية</th>
+                            <th>الاسم بالإنجليزية</th>
+                            <th>النوع</th>
+                            
+                            <th>الرصيد</th>
+                            <th>الحالة</th>
+                            <th>تاريخ الفتح</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var account in Model)
+                        {
+                            <tr data-status="@account.Status.ToLower()">
+                                <td class="fw-bold">@account.Id</td>
+                                <td>@account.NameAr</td>
+                                <td>@account.NameEn</td>
+                                <td>@account.Type</td>
+                  
+                                <td class="text-end">@account.Balance.ToString("N2")</td>
+                                <td>
+                                    <span class="badge @(account.Status == "active" ? "bg-success" : "bg-secondary")">
+                                        @(account.Status == "active" ? "نشط" : "مغلق")
+                                    </span>
+                                </td>
+                                <td>@account.OpeningDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="@Url.Action("Edit", "GeneralLedgerView", new { id = account.Id })" class="btn btn-outline-info">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="@Url.Action("Delete", "GeneralLedgerView", new { id = account.Id })" class="btn btn-outline-warning">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">لا توجد حسابات عامة مسجلة</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<partial name="_CreateModal" />
+<partial name="_EditModal" />
+<partial name="_DeleteModal" />
+
+@section Styles {
+    <style>
+        .banking-container {
+            padding: 20px;
+            background-color: #f8f9fa;
+            min-height: calc(100vh - 120px);
+        }
+
+        .page-title {
+            color: #1a3a6c;
+            font-weight: 600;
+            /* Removed the border-bottom line */
+            padding-bottom: 10px;
+        }
+
+        .banking-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+            .banking-card .card-header {
+                background-color: #f8f9fa;
+                border-bottom: 1px solid #dee2e6;
+                padding: 15px 20px;
+            }
+
+                .banking-card .card-header h5 {
+                    color: #1a3a6c;
+                    font-weight: 600;
+                    margin: 0;
+                }
+
+        .banking-table th {
+            background-color: #2c5282;
+            color: white;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .banking-table td {
+            vertical-align: middle;
+        }
+
+      
+        .btn-outline-secondary {
+            color: #6c757d;
+            border-color: #6c757d;
+        }
+
+            .btn-outline-secondary:hover {
+                background-color: #6c757d;
+                border-color: #6c757d;
+                color: white;
+            }
+
+        .modal-header {
+            background: linear-gradient(to right, #1a3a6c, #2c5282);
+            color: white;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #1a3a6c;
+        }
+
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .pagination {
+            margin: 20px 0 0 0;
+        }
+
+        .page-link {
+            color: #1a3a6c;
+            border: 1px solid #dee2e6;
+        }
+
+        .page-item.active .page-link {
+            background-color: #1a3a6c;
+            border-color: #1a3a6c;
+            color: white;
+        }
+
+        .page-link:hover {
+            color: #1a3a6c;
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Set default dates for filter if not set
+            if (!$('#startDate').val()) {
+                $('#startDate').val(new Date().toISOString().split('T')[0]);
+            }
+            if (!$('#endDate').val()) {
+                $('#endDate').val(new Date().toISOString().split('T')[0]);
+            }
+
+            // Search functionality
+            $('#searchButton').on('click', function() {
+                filterTable();
+            });
+
+            $('#searchInput').on('keyup', function() {
+                filterTable();
+            });
+
+            // Add Enter key support for search
+            $('#searchInput').on('keypress', function(e) {
+                if (e.which === 13) { // Enter key
+                    e.preventDefault();
+                    filterTable();
+                }
+            });
+
+            // Date filter form submission
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault(); // Prevent default form submission
+                filterTable(); // Use the same filter function
+            });
+
+            // Filter by status
+            $('.filter-option').on('click', function() {
+                const status = $(this).data('status');
+                if (status === 'all') {
+                    $('#accountsTable tbody tr').show();
+                } else {
+                    $('#accountsTable tbody tr').hide();
+                    $(`#accountsTable tbody tr[data-status="${status}"]`).show();
+                }
+            });
+
+            // Edit button click
+            $('.edit-btn').on('click', function() {
+                const accountId = $(this).data('id');
+                loadAccountData(accountId);
+            });
+
+            // Delete button click
+            $('.delete-btn').on('click', function() {
+                const accountId = $(this).data('id');
+                $('#deleteAccountId').val(accountId);
+                $('#deleteModal').modal('show');
+            });
+
+            function filterTable() {
+                const searchText = $('#searchInput').val().toLowerCase().trim();
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+
+                $('#accountsTable tbody tr').each(function() {
+                    const accountId = $(this).find('td:eq(0)').text().toLowerCase().trim();
+                    const nameAr = $(this).find('td:eq(1)').text().toLowerCase().trim();
+                    const nameEn = $(this).find('td:eq(2)').text().toLowerCase().trim();
+                    const dateCell = $(this).find('td:eq(6)').text().trim(); // Date column
+
+                    let matchesSearch = true;
+                    let matchesDate = true;
+
+                    // Check search text
+                    if (searchText) {
+                        matchesSearch = accountId.includes(searchText) ||
+                                       nameAr.includes(searchText) ||
+                                       nameEn.includes(searchText) ||
+                                       dateCell.includes(searchText); // Also search in dates
+                    }
+
+                    // Check date range filter
+                    if (startDate || endDate) {
+                        const rowDate = new Date(dateCell);
+
+                        if (startDate) {
+                            const start = new Date(startDate);
+                            start.setHours(0, 0, 0, 0);
+                            if (rowDate < start) matchesDate = false;
+                        }
+
+                        if (endDate) {
+                            const end = new Date(endDate);
+                            end.setHours(23, 59, 59, 999);
+                            if (rowDate > end) matchesDate = false;
+                        }
+                    }
+
+                    // Show row only if it matches both search AND date filters
+                    if (matchesSearch && matchesDate) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            function loadAccountData(accountId) {
+                // Show loading state
+                $('#editModal .modal-body').html(`
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">جاري التحميل...</span>
+                        </div>
+                        <p class="mt-2">جاري تحميل بيانات الحساب</p>
+                    </div>
+                `);
+                $('#editModal').modal('show');
+
+                // Fetch account data from API
+                $.get(`/api/GeneralLedger/${accountId}`)
+                    .done(function(data) {
+                        populateEditForm(data);
+                    })
+                    .fail(function() {
+                        $('#editModal .modal-body').html(`
+                            <div class="alert alert-danger text-center">
+                                فشل في تحميل بيانات الحساب. يرجى المحاولة مرة أخرى.
+                            </div>
+                        `);
+                    });
+            }
+
+            function populateEditForm(account) {
+                $('#editAccountId').val(account.id);
+                $('#editNameAr').val(account.nameAr);
+                $('#editNameEn').val(account.nameEn);
+                $('#editStatus').val(account.status);
+                $('#editInterestRate').val(account.interestRate);
+
+                // Replace modal content with form
+                $('#editModal .modal-body').html(`
+                    <form id="editAccountForm">
+                        <input type="hidden" id="editAccountId" />
+                        <div class="mb-3">
+                            <label for="editNameAr" class="form-label">الاسم بالعربية</label>
+                            <input type="text" class="form-control" id="editNameAr" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editNameEn" class="form-label">الاسم بالإنجليزية</label>
+                            <input type="text" class="form-control" id="editNameEn">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editStatus" class="form-label">الحالة</label>
+                            <select class="form-select" id="editStatus" required>
+                                <option value="active">نشط</option>
+                                <option value="closed">مغلق</option>
+                            </select>
+                        </div>
+                    </form>
+                `);
+
+                // Set values
+                $('#editNameAr').val(account.nameAr);
+                $('#editNameEn').val(account.nameEn);
+                $('#editStatus').val(account.status);
+                $('#editInterestRate').val(account.interestRate);
+            }
+
+            // Handle edit form submission
+            $(document).on('submit', '#editAccountForm', function(e) {
+                e.preventDefault();
+
+                const accountId = $('#editAccountId').val();
+                const formData = {
+                    nameAr: $('#editNameAr').val(),
+                    nameEn: $('#editNameEn').val(),
+                    status: $('#editStatus').val(),
+                    interestRate: parseFloat($('#editInterestRate').val()) || 0
+                };
+
+                $.ajax({
+                    url: `/api/GeneralLedger/Updategl/${accountId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function() {
+                        $('#editModal').modal('hide');
+                        showAlert('تم تحديث الحساب بنجاح', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    },
+                    error: function() {
+                        showAlert('فشل في تحديث الحساب', 'danger');
+                    }
+                });
+            });
+
+            // Handle delete form submission
+            $('#deleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const accountId = $('#deleteAccountId').val();
+
+                $.ajax({
+                    url: `/api/GeneralLedger/deletegl/${accountId}`,
+                    type: 'PUT',
+                    success: function() {
+                        $('#deleteModal').modal('hide');
+                        showAlert('تم حذف الحساب بنجاح', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    },
+                    error: function() {
+                        showAlert('فشل في حذف الحساب', 'danger');
+                    }
+                });
+            });
+
+            function showAlert(message, type) {
+                const alert = $(`
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `);
+
+                $('.banking-container').prepend(alert);
+
+                setTimeout(() => {
+                    alert.alert('close');
+                }, 5000);
+            }
+        });
+    </script>
+}

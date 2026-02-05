@@ -1,0 +1,152 @@
+﻿@model MinCoreBank.Models.GlTransaction
+
+@{
+    ViewData["Title"] = "تفاصيل القيد";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container" dir="rtl">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-info-circle fa-lg ms-2"></i>@ViewData["Title"]
+        </h1>
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">رقم المرجع:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.TransactionRef</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم الحساب العام:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.GlName</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب المدين:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.DebitAccount</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب الدائن:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.CreditAccount</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">العملة:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.Currency</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+       
+       
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحالة:</label>
+                        <p class="form-control-plaintext">
+                            <span class="badge @(Model.Status == "completed" ? "bg-success" : Model.Status == "returned" ? "bg-warning" : "bg-secondary")">
+                                @(Model.Status == "completed" ? "مكتمل" : Model.Status == "returned" ? "مرتجع" : "قيد المعالجة")
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الوصف بالعربية:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.DescriptionAr</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">تاريخ الإنشاء:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.CreatedAt?.ToString("yyyy-MM-dd HH:mm")</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">تم الإنشاء بواسطة:</label>
+                        <p class="form-control-plaintext border-bottom pb-2">@Model.CreatedBy</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mt-4 d-flex gap-2">
+                <a href="@Url.Action("Index", "GlTransactionsView")" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left ms-2"></i> العودة للقائمة
+                </a>
+              
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .banking-container {
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .page-title {
+        color: #2c3e50;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .banking-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: none;
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .form-label {
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .form-control-plaintext {
+        padding: 0;
+        color: #5a5c69;
+        min-height: 25px;
+    }
+
+    .btn {
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: 600;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+
+    .btn-warning {
+        background-color: #f6c23e;
+        border-color: #f6c23e;
+        color: #1f2d3d;
+    }
+</style>

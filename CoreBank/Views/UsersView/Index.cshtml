@@ -1,0 +1,842 @@
+﻿@model IEnumerable<MinCoreBank.Models.Users>
+
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Get pagination data from ViewBag
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int totalCount = ViewBag.TotalCount ?? 0;
+    int pageSize = ViewBag.PageSize ?? 10;
+    string statusFilter = ViewBag.StatusFilter;
+    string roleFilter = ViewBag.RoleFilter;
+    string branchFilter = ViewBag.BranchFilter;
+    string searchTerm = ViewBag.SearchTerm;
+    string branchid_ = ViewBag.branchid;
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-users fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="fas fa-plus-circle me-2"></i>إضافة مستخدم جديد
+        </button>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="banking-card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>تصفية المستخدمين</h5>
+        </div>
+        <div class="card-body">
+            <form id="filterForm" method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="statusFilter" class="form-label">الحالة</label>
+                    <select class="form-select" id="statusFilter" name="statusFilter">
+                        <option value="all" selected="@(statusFilter == "all")">جميع الحالات</option>
+                        <option value="active" selected="@(statusFilter == "active")">نشط</option>
+                        <option value="suspended" selected="@(statusFilter == "suspended")">موقوف</option>
+                        <option value="disabled" selected="@(statusFilter == "disabled")">معطل</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="roleFilter" class="form-label">الدور</label>
+                    <select class="form-select" id="roleFilter" name="roleFilter">
+                        <option value="all" selected="@(roleFilter == "all")">جميع الأدوار</option>
+                        <option value="teller" selected="@(roleFilter == "teller")">مشغل</option>
+                        <option value="manager" selected="@(roleFilter == "manager")">مدير</option>
+                        <option value="admin" selected="@(roleFilter == "admin")">ادمن</option>
+                        <option value="auditor" selected="@(roleFilter == "auditor")">مدقق</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="branchFilter" class="form-label">الفرع</label>
+                    <select class="form-select" id="branchFilter" name="branchFilter">
+                        <option value="all" selected="@(branchFilter == "all")">جميع الفروع</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="searchTerm" class="form-label">بحث</label>
+                    <input type="text" class="form-control" id="searchTerm" name="searchTerm" value="@searchTerm" placeholder="ابحث بالاسم أو المعرف...">
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>بحث
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>إعادة تعيين
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="banking-card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="ابحث بالاسم أو المعرف...">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Pagination Info -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p class="text-muted">
+                        عرض <strong>@(Math.Min(pageSize, Model.Count()))</strong> من أصل <strong>@totalCount</strong> مستخدم
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="text-muted">
+                        الصفحة <strong>@currentPage</strong> من <strong>@totalPages</strong>
+                    </p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover banking-table" id="usersTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>المعرف</th>
+                            <th>الاسم العربي</th>
+                            <th>الاسم الإنجليزي</th>
+                            <th>الدور</th>
+                            <th>الفرع</th>
+                            <th>الحالة</th>
+                            <th>آخر تسجيل دخول</th>
+                            <th>تاريخ الإنشاء</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold">@user.Id</td>
+                                <td>@user.Name_ar</td>
+                                <td>@user.Name_en</td>
+                                <td>
+                                    @switch (user.Role?.ToLower())
+                                    {
+                                        case "admin":
+                                            <span class="badge bg-danger">@user.Role</span>
+                                            break;
+                                        case "manager":
+                                            <span class="badge bg-primary">@user.Role</span>
+                                            break;
+                                        case "teller":
+                                            <span class="badge bg-info">@user.Role</span>
+                                            break;
+                                        case "auditor":
+                                            <span class="badge bg-warning text-dark">@user.Role</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary">@user.Role</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>@user.BranchId</td>
+                                <td>
+                                    <span class="badge @(user.Status == "active" ? "bg-success" : user.Status == "suspended" ? "bg-warning" : "bg-secondary")">
+                                        @(user.Status == "active" ? "نشط" : user.Status == "suspended" ? "موقوف" : "معطل")
+                                    </span>
+                                </td>
+                                <td>@(user.LastLogin?.ToString("yyyy-MM-dd HH:mm") ?? "لم يسجل دخول")</td>
+                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-info view-user" data-user-id="@user.Id">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary edit-user" data-user-id="@user.Id">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        @if (user.Status == "active")
+                                        {
+                                            <button type="button" class="btn btn-outline-warning suspend-user" data-user-id="@user.Id">
+                                                <i class="fas fa-pause"></i>
+                                            </button>
+                                        }
+                                        else if (user.Status == "suspended")
+                                        {
+                                            <button type="button" class="btn btn-outline-success activate-user" data-user-id="@user.Id">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        }
+                                        <button type="button" class="btn btn-outline-danger delete-user" data-user-id="@user.Id">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            @if (totalPages > 1)
+            {
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        <!-- First Page -->
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = 1, statusFilter, roleFilter, branchFilter, searchTerm })">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+
+                        <!-- Previous Page -->
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, statusFilter, roleFilter, branchFilter, searchTerm })">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+
+                        <!-- Page Numbers -->
+                        @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { page = i, statusFilter, roleFilter, branchFilter, searchTerm })">@i</a>
+                            </li>
+                        }
+
+                        <!-- Next Page -->
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, statusFilter, roleFilter, branchFilter, searchTerm })">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+
+                        <!-- Last Page -->
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = totalPages, statusFilter, roleFilter, branchFilter, searchTerm })">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">لا توجد مستخدمين مسجلين</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createUserModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>إضافة مستخدم جديد
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="NameAr" class="form-label">الاسم العربي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="NameAr" name="NameAr" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="NameEn" class="form-label">الاسم الإنجليزي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="NameEn" name="NameEn" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="Role" class="form-label">الدور <span class="text-danger">*</span></label>
+                                <select class="form-select" id="Role" name="Role" required>
+                                    <option value="">اختر الدور</option>
+                                    <option value="teller">مشغل</option>
+                                    <option value="manager">مدير</option>
+                                    <option value="admin">ادمن</option>
+                                    <option value="auditor">مدقق</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="BranchId" class="form-label">الفرع <span class="text-danger">*</span></label>
+                                <select class="form-select" id="BranchId" name="BranchId" required>
+                                    <option value="">اختر الفرع</option>
+                                    <option value="721">رئيسي (721)</option>
+                                    <option value="722">بغداد العطيفية (722)</option>
+                                    <option value="723">ديالى (723)</option>
+                                    <option value="724">ديوانية (724)</option>
+                                    <option value="725">تلعفر (725)</option>
+                                    <option value="727">نجف (727)</option>
+                                    <option value="728">عزيزية (728)</option>
+                                    <option value="729">كربلاء (729)</option>
+                                    <option value="730">كوت (730)</option>
+                                    <option value="731">محمودية (731)</option>
+                                    <option value="732">كركوك (732)</option>
+                                    <option value="733">مسيب (733)</option>
+                                    <option value="734">حلة (734)</option>
+                                    <option value="736">ميسان (736)</option>
+                                    <option value="737">بصرة (737)</option>
+                                    <option value="738">ناصرية (738)</option>
+                                    <option value="739">موصل (739)</option>
+                                    <option value="740">رمادي (740)</option>
+                                    <option value="741">تكريت (741)</option>
+                                    <option value="745">صويرة (745)</option>
+                                    <option value="753">سماوة (753)</option>
+                                    <option value="754">قرنة (754)</option>
+                                    <option value="755">هندية (755)</option>
+                                    <option value="756">خالص (756)</option>
+                                    <option value="759">طارمية (759)</option>
+                                    <option value="760">هاشمية (760)</option>
+                                    <option value="762">تجهيزات (762)</option>
+                                    <option value="764">بلد (764)</option>
+                                    <option value="774">مدائن (774)</option>
+                                    <option value="784">سامراء (784)</option>
+                                    <option value="830">مقدادية (830)</option>
+                                    <option value="833">م. شركة مابين النهرين العامة للبذور (833)</option>
+                                    <option value="750">قسم المالي (750)</option>
+                                    <option value="751">قسم الدفع الالكتروني (751)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="Password" class="form-label">كلمة المرور <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="Password" name="Password" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ConfirmPassword" class="form-label">تأكيد كلمة المرور <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="ConfirmPassword" name="ConfirmPassword" required>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="createUserBtn">حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>تعديل بيانات المستخدم
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="EditUserId" name="Id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="EditNameAr" class="form-label">الاسم العربي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="EditNameAr" name="NameAr" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="EditNameEn" class="form-label">الاسم الإنجليزي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="EditNameEn" name="NameEn" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="EditRole" class="form-label">الدور <span class="text-danger">*</span></label>
+                                <select class="form-select" id="EditRole" name="Role" required>
+                                    <option value="teller">مشغل</option>
+                                    <option value="manager">مدير</option>
+                                    <option value="admin">ادمن</option>
+                                    <option value="auditor">مدقق</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="EditStatus" class="form-label">الحالة <span class="text-danger">*</span></label>
+                                <select class="form-select" id="EditStatus" name="Status" required>
+                                    <option value="active">نشط</option>
+                                    <option value="suspended">موقوف</option>
+                                    <option value="disabled">معطل</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="updateUserBtn">تحديث</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View User Modal -->
+<div class="modal fade" id="viewUserModal" tabindex="-1" aria-labelledby="viewUserModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewUserModalLabel">
+                    <i class="fas fa-user me-2"></i>تفاصيل المستخدم
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">المعرف:</label>
+                            <p id="viewUserId" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">الاسم العربي:</label>
+                            <p id="viewNameAr" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">الاسم الإنجليزي:</label>
+                            <p id="viewNameEn" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">الدور:</label>
+                            <p id="viewRole" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">الفرع:</label>
+                            <p id="viewBranch" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">الحالة:</label>
+                            <p id="viewStatus" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">آخر تسجيل دخول:</label>
+                            <p id="viewLastLogin" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">تاريخ الإنشاء:</label>
+                            <p id="viewCreatedAt" class="form-control-plaintext"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">تأكيد الإجراء</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmationMessage">هل أنت متأكد من أنك تريد تنفيذ هذا الإجراء؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-danger" id="confirmActionBtn">تأكيد</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .banking-table th {
+            background-color: #1a3a6c;
+            color: white;
+        }
+
+        .badge {
+            font-size: 0.85em;
+        }
+
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Load branches for dropdowns
+            loadBranches();
+
+            // Search functionality
+            $('#searchButton').on('click', filterTable);
+            $('#searchInput').on('keyup', filterTable);
+
+            // Create user
+            $('#createUserBtn').on('click', createUser);
+
+            // Update user
+            $('#updateUserBtn').on('click', updateUser);
+
+            // View user details
+            $('.view-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                viewUser(userId);
+            });
+
+            // Edit user
+            $('.edit-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                editUser(userId);
+            });
+
+            // Suspend user
+            $('.suspend-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                showConfirmation('هل أنت متأكد من تعليق هذا المستخدم؟', function() {
+                    updateUserStatus(userId, 'suspended');
+                });
+            });
+
+            // Activate user
+            $('.activate-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                showConfirmation('هل أنت متأكد من اعادة تفعيل هذا المستخدم؟', function() {
+                    updateUserStatus(userId, 'active');
+                });
+            });
+
+            // Delete user
+            $('.delete-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                showConfirmation('هل أنت متأكد من أنك تريد حذف هذا المستخدم؟ هذا الإجراء لا يمكن التراجع عنه.', function() {
+                    deleteUser(userId);
+                });
+            });
+
+            function loadBranches() {
+                // This would typically call an API to get branches
+                // For now, we'll simulate with static data
+                const branches = [
+                           
+            { id: '721', name: 'رئيسي (721)' },
+            { id: '722', name: 'بغداد العطيفية (722)' },
+            { id: '723', name: 'ديالى (723)' },
+            { id: '724', name: 'ديوانية (724)' },
+            { id: '725', name: 'تلعفر (725)' },
+            { id: '727', name: 'نجف (727)' },
+            { id: '728', name: 'عزيزية (728)' },
+            { id: '729', name: 'كربلاء (729)' },
+            { id: '730', name: 'كوت (730)' },
+            { id: '731', name: 'محمودية (731)' },
+            { id: '732', name: 'كركوك (732)' },
+            { id: '733', name: 'مسيب (733)' },
+            { id: '734', name: 'حلة (734)' },
+            { id: '736', name: 'ميسان (736)' },
+            { id: '737', name: 'بصرة (737)' },
+            { id: '738', name: 'ناصرية (738)' },
+            { id: '739', name: 'موصل (739)' },
+            { id: '740', name: 'رمادي (740)' },
+            { id: '741', name: 'تكريت (741)' },
+            { id: '745', name: 'صويرة (745)' },
+            { id: '753', name: 'سماوة (753)' },
+            { id: '754', name: 'قرنة (754)' },
+            { id: '755', name: 'هندية (755)' },
+            { id: '756', name: 'خالص (756)' },
+            { id: '759', name: 'طارمية (759)' },
+            { id: '760', name: 'هاشمية (760)' },
+            { id: '762', name: 'تجهيزات (762)' },
+            { id: '764', name: 'بلد (764)' },
+            { id: '774', name: 'مدائن (774)' },
+            { id: '784', name: 'سامراء (784)' },
+            { id: '830', name: 'مقدادية (830)' },
+            { id: '833', name: 'م. شركة مابين النهرين العامة للبذور (833)' },
+            { id: '750', name: 'قسم المالي (750)' },
+            { id: '751', name: 'قسم الدفع الالكتروني (751)' }
+        ];
+
+                // Populate branch dropdowns
+                const branchDropdowns = ['#branchFilter', '#BranchId'];
+                branchDropdowns.forEach(selector => {
+                    $(selector).empty().append('<option value="all">جميع الفروع</option>');
+                    branches.forEach(branch => {
+                        $(selector).append(`<option value="${branch.id}">${branch.name}</option>`);
+                    });
+                });
+            }
+
+            function filterTable() {
+                const searchText = $('#searchInput').val().toLowerCase();
+                $('#usersTable tbody tr').each(function() {
+                    const id = $(this).find('td:eq(0)').text().toLowerCase();
+                    const nameAr = $(this).find('td:eq(1)').text().toLowerCase();
+                    const nameEn = $(this).find('td:eq(2)').text().toLowerCase();
+
+                    if (id.includes(searchText) || nameAr.includes(searchText) || nameEn.includes(searchText)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            function createUser() {
+                       const formData = {
+            NameAr: $('#NameAr').val(),
+            NameEn: $('#NameEn').val(),
+            Role: $('#Role').val(), 
+            BranchId:$('#BranchId').val(),  
+            Password: $('#Password').val()
+        };
+     
+       
+                // Validate passwords match
+                if ($('#Password').val() !== $('#ConfirmPassword').val()) {
+                    alert('كلمات المرور غير متطابقة');
+                    return;
+                }
+
+                // Validate all required fields
+                if (!formData.NameAr || !formData.NameEn || !formData.Role || !formData.BranchId || !formData.Password) {
+                    alert('يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                }
+                  
+                $.ajax({
+                    url: '/api/Users/CreateUser', // Fixed endpoint URL
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('تم إنشاء المستخدم بنجاح!');
+                            $('#createUserModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            alert('فشل في إنشاء المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'حدث خطأ أثناء إنشاء المستخدم. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            // Handle validation errors
+                            const errors = Object.values(xhr.responseJSON.errors).flat();
+                            errorMessage = 'أخطاء في البيانات:\n' + errors.join('\n');
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            }
+
+            function viewUser(userId) {
+                $.ajax({
+                    url: `/api/Users/${userId}`,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            const user = response.data;
+                            $('#viewUserId').text(user.id);
+                            $('#viewNameAr').text(user.name_ar);
+                            $('#viewNameEn').text(user.name_en);
+                            $('#viewRole').text(user.role);
+                            $('#viewBranch').text(user.branchId);
+                            $('#viewStatus').text(user.status === 'active' ? 'نشط' : user.status === 'suspended' ? 'موقوف' : 'معطل');
+                            $('#viewLastLogin').text(user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'لم يسجل دخول');
+                            $('#viewCreatedAt').text(new Date(user.createdAt).toLocaleDateString());
+
+                            $('#viewUserModal').modal('show');
+                        } else {
+                            alert('فشل في تحميل بيانات المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('حدث خطأ أثناء تحميل بيانات المستخدم.');
+                    }
+                });
+            }
+
+            function editUser(userId) {
+                $.ajax({
+                    url: `/api/Users/${userId}`,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            const user = response.data;
+                            $('#EditUserId').val(user.id);
+                            $('#EditNameAr').val(user.name_ar);
+                            $('#EditNameEn').val(user.name_en);
+                            $('#EditRole').val(user.role);
+                            $('#EditStatus').val(user.status);
+
+                            $('#editUserModal').modal('show');
+                        } else {
+                            alert('فشل في تحميل بيانات المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('حدث خطأ أثناء تحميل بيانات المستخدم.');
+                    }
+                });
+            }
+
+            function updateUser() {
+                const userId = $('#EditUserId').val();
+                const formData = {
+                    NameAr: $('#EditNameAr').val(),
+                    NameEn: $('#EditNameEn').val(),
+                    Role: $('#EditRole').val(),
+                    Status: $('#EditStatus').val()
+                };
+
+                // Validate all required fields
+                if (!formData.NameAr || !formData.NameEn || !formData.Role || !formData.Status) {
+                    alert('يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/Users/UpdateUser/${userId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('تم تحديث المستخدم بنجاح!');
+                            $('#editUserModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            alert('فشل في تحديث المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'حدث خطأ أثناء تحديث المستخدم. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            // Handle validation errors
+                            const errors = Object.values(xhr.responseJSON.errors).flat();
+                            errorMessage = 'أخطاء في البيانات:\n' + errors.join('\n');
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            }
+
+            function updateUserStatus(userId, status) {
+                const formData = {
+                    Status: status
+                };
+               
+                $.ajax({
+                    url: `/api/Users/UpdateUserstatus/${userId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('تم تحديث حالة المستخدم بنجاح!');
+                            window.location.reload();
+                        } else {
+                            alert('فشل في تحديث حالة المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'حدث خطأ أثناء تحديث حالة المستخدم. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            }
+
+            function deleteUser(userId) {
+                $.ajax({
+                    url: `/api/Users/DeleteUser/${userId}`,
+                    type: 'PUT',
+                    success: function(response) {
+                        if (response.success) {
+                            alert('تم حذف المستخدم بنجاح!');
+                            window.location.reload();
+                        } else {
+                            alert('فشل في حذف المستخدم: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'حدث خطأ أثناء حذف المستخدم. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            }
+
+            function showConfirmation(message, callback) {
+                $('#confirmationMessage').text(message);
+                $('#confirmationModal').modal('show');
+
+                $('#confirmActionBtn').off('click').on('click', function() {
+                    $('#confirmationModal').modal('hide');
+                    callback();
+                });
+            }
+        });
+    </script>
+}

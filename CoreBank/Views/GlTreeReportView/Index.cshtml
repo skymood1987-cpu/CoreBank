@@ -1,0 +1,1813 @@
+﻿@model IEnumerable<MinCoreBank.Models.Dtos.GlTreeDisplayDto>
+
+@{
+    ViewData["Title"] = "تقارير حسابات الاستاذ العام";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Handle null model
+    var modelData = Model ?? new List<MinCoreBank.Models.Dtos.GlTreeDisplayDto>();
+
+    // CORRECTED: Calculate totals from MAIN CATEGORIES only (Depth = 0)
+    decimal totalBalance = 0;
+    decimal totalAvailableBalance = 0;
+    decimal totalDebit = 0;
+    decimal totalCredit = 0;
+    int leafNodeCount = 0;
+    int hasChildrenCount = 0;
+    int totalRecords = 0;
+    var userBranchCode = ViewBag.UserBranchCode as string;
+
+    if (modelData != null)
+    {
+        totalRecords = modelData.Count();
+
+        foreach (var item in modelData)
+        {
+            // COUNT ALL accounts for statistics
+            if (item.IsLeafNode)
+                leafNodeCount++;
+
+            if (item.HasChildren)
+                hasChildrenCount++;
+
+            // CORRECTED: Only add to totals if it's a MAIN CATEGORY (Depth = 0)
+            // This prevents double/triple counting of child balances
+            if (item.Depth == 0)
+            {
+                totalBalance += item.Balance;           // Cumulative balance of main category
+                totalAvailableBalance += item.AvailableBalance;  // Cumulative available balance
+                totalDebit += item.Debit;               // Cumulative debit of main category
+                totalCredit += item.Credit;             // Cumulative credit of main category
+            }
+        }
+    }
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-sitemap fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+        <div class="btn-group">
+            <button type="button" class="btn btn-success" id="exportReport">
+                <i class="fas fa-file-export me-2"></i>تصدير التقرير (Excel)
+            </button>
+        </div>
+    </div>
+
+    <!-- Report Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
+                    <h4 class="text-primary">@totalBalance.ToString("N2")</h4>
+                    <p class="text-muted mb-0">إجمالي الرصيد</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-coins fa-2x text-success mb-2"></i>
+                    <h4 class="text-success">@totalAvailableBalance.ToString("N2")</h4>
+                    <p class="text-muted mb-0">الرصيد المتاح</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-invoice-dollar fa-2x text-info mb-2"></i>
+                    <h4 class="text-info">@leafNodeCount</h4>
+                    <p class="text-muted mb-0">الحسابات الطرفية</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-layer-group fa-2x text-warning mb-2"></i>
+                    <h4 class="text-warning">@hasChildrenCount</h4>
+                    <p class="text-muted mb-0">مجموعات الحسابات</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Query Section - UPDATED -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="transaction-query-section p-3 border rounded bg-light">
+                <h6 class="mb-3"><i class="fas fa-search-dollar me-2"></i>استعلام المعاملات</h6>
+                <div class="row g-2 align-items-end">
+                    <!-- Reference Number -->
+                    <div class="col-md-3" id="refField">
+                        <label class="form-label small mb-1">رقم المرجع</label>
+                        <input type="text" class="form-control form-control-sm" id="transactionRef" placeholder="أدخل الرقم المرجعي...">
+                    </div>
+
+                    <!-- GL Account Number - NEW -->
+                    <div class="col-md-3" id="glField" style="display: none;">
+                        <label class="form-label small mb-1">رقم الحساب</label>
+                        <input type="text" class="form-control form-control-sm" id="glIdSearch" placeholder="أدخل رقم الحساب...">
+                    </div>
+
+                    <!-- Start Date -->
+                    <div class="col-md-2" id="startDateField" style="display: none;">
+                        <label class="form-label small mb-1">من تاريخ</label>
+                        <input type="date" class="form-control form-control-sm" id="startDate" value="@DateTime.Now.ToString("yyyy-MM-dd")">
+                    </div>
+
+                    <!-- End Date -->
+                    <div class="col-md-2" id="endDateField" style="display: none;">
+                        <label class="form-label small mb-1">إلى تاريخ</label>
+                        <input type="date" class="form-control form-control-sm" id="endDate" value="@DateTime.Now.ToString("yyyy-MM-dd")">
+                    </div>
+
+                    <!-- Query Type -->
+                    <div class="col-md-2">
+                        <label class="form-label small mb-1">نوع الاستعلام</label>
+                        <select class="form-select form-select-sm" id="queryType">
+                            <option value="ref">بالرقم المرجعي</option>
+                            <option value="date">بالتاريخ</option>
+                            <option value="gl">برقم الحساب</option>
+                            <option value="gl-date">برقم الحساب والتاريخ</option>
+                        </select>
+                    </div>
+
+                    <!-- Search Button -->
+                    <div class="col-md-3">
+                        <div class="btn-group w-100">
+                            <button class="btn btn-primary btn-sm" id="searchTransactions">
+                                <i class="fas fa-search me-1"></i>بحث
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Data -->
+<div class="banking-card">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i>بيانات التقرير - الفرع @ViewBag.userBranchCode
+                    <span class="badge bg-secondary ms-2">@totalRecords سجل</span>
+                </h5>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="input-group" style="max-width: 300px; margin-right: auto; margin-left: 0;">
+                    <input type="text" id="searchAccounts" class="form-control" placeholder="ابحث برقم أو اسم الحساب...">
+                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover banking-table" id="reportTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="120">رقم الدليل</th>
+                        <th>اسم الحساب</th>
+                        <th>المستوى</th>
+                        <th width="120" class="text-end">الرصيد المدين</th>
+                        <th width="120" class="text-end">الرصيد الدائن</th>
+                        <th width="150" class="text-end">الرصيد الإجمالي</th>
+                        <th width="150" class="text-end">الرصيد الخاص</th>
+                        <th width="120">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (modelData != null)
+                    {
+                        foreach (var account in modelData)
+                        {
+                            <tr data-depth="@account.Depth" data-has-children="@account.HasChildren.ToString().ToLower()"
+                                data-gl-id="@account.GlId" data-parent-id="@account.ParentGlId"
+                                class="level-@account.Depth">
+                                <td class="fw-bold">
+                                    <span class="account-indent" style="padding-left: @(account.Depth * 20)px">
+                                        @if (account.HasChildren)
+                                        {
+                                            <i class="fas fa-folder text-warning me-1"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-file-invoice-dollar text-success me-1"></i>
+                                        }
+                                        @account.GlId
+                                    </span>
+                                </td>
+                                <td class="account-name">@account.GlName</td>
+                                <td>
+                                    <span class="badge bg-info">@account.LevelName</span>
+                                </td>
+                                <!-- NEW: Debit Column -->
+                                <td class="text-end fw-bold text-danger">
+                                    @account.Debit.ToString("N2")
+                                </td>
+                                <!-- NEW: Credit Column -->
+                                <td class="text-end fw-bold text-success">
+                                    @account.Credit.ToString("N2")
+                                </td>
+                                <!-- Existing Balance Columns -->
+                                <td class="text-end fw-bold @(account.Balance >= 0 ? "text-success" : "text-danger")">
+                                    @account.Balance.ToString("N2")
+                                </td>
+
+                                <td class="text-end @(account.OwnBalance >= 0 ? "text-success" : "text-danger")">
+                                    @account.OwnBalance.ToString("N2")
+                                </td>
+
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info view-details" data-gl-id="@account.GlId" title="عرض التفاصيل">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+
+                                        @if (account.HasChildren)
+                                        {
+                                            <button class="btn btn-outline-secondary expand-children" data-gl-id="@account.GlId" title="عرض الحسابات الفرعية">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (modelData == null || !modelData.Any())
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-sitemap fa-3x text-muted mb-3"></i>
+                <p class="text-muted">لا توجد بيانات للتقرير المحدد</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Transactions Modal -->
+<div class="modal fade" id="transactionsModal" tabindex="-1" aria-labelledby="transactionsModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title fs-6" id="transactionsModalLabel">
+                    <i class="fas fa-exchange-alt me-1"></i>معاملات الحساب
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div id="transactionsContent">
+                    <!-- Transactions will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Transaction Results Modal -->
+<div class="modal fade" id="transactionResultsModal" tabindex="-1" aria-labelledby="transactionResultsModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <!-- UPDATED HEADER WITH #1a3a6c BACKGROUND -->
+            <div class="modal-header text-white py-3" style="background-color: #1a3a6c; border-bottom: 2px solid #2c5e9c;">
+                <h5 class="modal-title fs-5" id="transactionResultsModalLabel">
+                    <i class="fas fa-list-alt me-2"></i>نتائج استعلام المعاملات - الفرع @ViewBag.userBranchCode
+                </h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <div id="transactionResultsContent">
+                    <!-- Enhanced content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Transaction Results Styling */
+        /* NEW: Debit and Credit columns styling */
+        .banking-table td:nth-child(4), /* مدين column */
+        .banking-table td:nth-child(5) /* دائن column */ {
+            width: 120px !important;
+            min-width: 120px !important;
+            max-width: 120px !important;
+            text-align: end !important;
+            font-weight: 600 !important;
+            font-size: 0.95em;
+        }
+
+        /* Update existing balance columns to maintain same width */
+        .banking-table td:nth-child(6), /* الرصيد الإجمالي */
+        .banking-table td:nth-child(7) /* الرصيد الخاص */ {
+            width: 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+            text-align: end !important;
+            font-weight: 600 !important;
+            color: #000000 !important;
+            font-size: 0.95em;
+        }
+
+        /* Update header widths for new columns */
+        .banking-table th:nth-child(4),
+        .banking-table th:nth-child(5) {
+            width: 120px !important;
+            min-width: 120px !important;
+            max-width: 120px !important;
+        }
+
+        .banking-table th:nth-child(6),
+        .banking-table th:nth-child(7) {
+            width: 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+        }
+
+        /* Color coding for debit and credit */
+        .banking-table td:nth-child(4) {
+            color: #dc3545 !important; /* Red for debit */
+        }
+
+        .banking-table td:nth-child(5) {
+            color: #198754 !important; /* Green for credit */
+        }
+
+        /* Override any existing color classes for debit/credit columns */
+        .banking-table td:nth-child(4).text-danger {
+            color: #dc3545 !important;
+        }
+
+        .banking-table td:nth-child(5).text-success {
+            color: #198754 !important;
+        }
+
+        .transaction-row:hover {
+            background-color: #fff9e6 !important;
+            transition: background-color 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .transaction-desc {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .banking-table th {
+            background-color: #1a3a6c;
+            border-color: #1a3a6c;
+            color: white;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .banking-table td {
+            color: #000000 !important;
+            font-weight: 500;
+            vertical-align: middle;
+        }
+
+        /* Summary cards matching index style */
+        /* Summary Cards - Centered Content */
+        .summary-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #1a3a6c;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+            .summary-card .card-body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                width: 100%;
+                padding: 1.5rem 1rem;
+            }
+
+            /* Center the icon */
+            .summary-card .fa-2x {
+                display: block;
+                margin: 0 auto 0.75rem auto;
+            }
+
+            /* Center the amount */
+            .summary-card h4 {
+                text-align: center;
+                margin: 0.5rem 0;
+                width: 100%;
+            }
+
+            /* Center the label */
+            .summary-card p {
+                text-align: center;
+                margin: 0;
+                width: 100%;
+            }
+
+        /* Print styles */
+        @@media print {
+            .btn, .modal-footer, .alert {
+                display: none !important;
+            }
+
+            .modal-dialog {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+
+            .modal-content {
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            .banking-card {
+                box-shadow: none !important;
+                border: 1px solid #000 !important;
+            }
+        }
+
+        .summary-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #1a3a6c;
+        }
+
+            .summary-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+        .account-indent {
+            display: inline-block;
+        }
+
+        .banking-table th {
+            background-color: #1a3a6c;
+            border-color: #1a3a6c;
+            color: white;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* ALL cells black text */
+        .banking-table td {
+            color: #000000 !important;
+            font-weight: 500;
+        }
+
+            /* اسم الحساب column - Black color */
+            .banking-table td.account-name {
+                color: #000000 !important;
+                font-weight: 500;
+            }
+
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* Single-digit GL accounts - Black text */
+        tr td:first-child .account-indent {
+            color: #000000 !important;
+        }
+
+        /* Level cells background color */
+        .banking-table td:nth-child(3) {
+            background-color: #e8f4fd !important;
+            text-align: center;
+        }
+
+            .banking-table td:nth-child(3) .badge {
+                background-color: #1a73e8 !important;
+                color: white !important;
+                font-weight: bold;
+                padding: 6px 10px;
+                font-size: 0.85em;
+            }
+
+        /* Level-based background colors */
+        .level-0 {
+            background-color: #2c5e9c !important;
+            color: #000000 !important; /* Changed to black */
+        }
+
+            .level-0 td {
+                color: #000000 !important; /* Changed to black */
+            }
+
+                .level-0 td:first-child .account-indent {
+                    color: #000000 !important; /* Changed to black */
+                }
+
+        .level-1 {
+            background-color: #e3f2fd !important;
+            font-weight: 600;
+        }
+
+        .level-2 {
+            background-color: #f3f8ff !important;
+        }
+
+        .level-3 {
+            background-color: #fafafa !important;
+        }
+
+        .level-4 {
+            background-color: #ffffff !important;
+        }
+
+        .positive-balance {
+            color: #198754 !important;
+            font-weight: 600;
+        }
+
+        .negative-balance {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-right: auto;
+            margin-left: 0;
+        }
+
+        /* FIXED: Row hover effect without shaking */
+        .banking-table tbody tr:hover {
+            background-color: #fff9e6 !important;
+            transition: background-color 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Single-digit account highlighting */
+        tr[data-depth="0"] td:first-child .account-indent {
+            font-size: 1.1em;
+            font-weight: 800;
+            color: #000000 !important;
+        }
+
+        /* Action buttons styling */
+        .btn-group-sm .btn {
+            border-radius: 4px;
+            margin: 1px;
+        }
+
+        .view-details {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+            color: white;
+        }
+
+        .view-transactions {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+
+        .expand-children {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: white;
+        }
+
+        /* Account details styling */
+        .account-details-modal .detail-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+            .account-details-modal .detail-item label {
+                display: inline-block;
+                width: 120px;
+                color: #555;
+            }
+
+        .account-details-modal .children-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        /* Balance columns styling - same size and color */
+        .banking-table td:nth-child(4),
+        .banking-table td:nth-child(5),
+        .banking-table td:nth-child(6) {
+            width: 150px !important;
+            text-align: end !important;
+            font-weight: 600 !important;
+            color: #000000 !important;
+        }
+
+        /* Ensure all balance columns have the same styling regardless of value */
+        .banking-table td:nth-child(4), /* الرصيد الإجمالي */
+        .banking-table td:nth-child(5) /* الرصيد الخاص */ {
+            width: 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+            text-align: end !important;
+            font-weight: 600 !important;
+            color: #000000 !important;
+            font-size: 0.95em;
+        }
+
+            /* Override any existing color classes for these columns */
+            .banking-table td:nth-child(4).text-success,
+            .banking-table td:nth-child(4).text-danger,
+            .banking-table td:nth-child(5).text-success,
+            .banking-table td:nth-child(5).text-danger {
+                color: #000000 !important;
+            }
+
+        /* Also fix the header columns to be same width */
+        .banking-table th:nth-child(4),
+        .banking-table th:nth-child(5) {
+            width: 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+        }
+
+        /* Field visibility control */
+        .field-hidden {
+            display: none !important;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Bank Style Styling */
+        .even-row {
+            background-color: #f8f9fa !important;
+        }
+
+        .odd-row {
+            background-color: #ffffff !important;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Force branch for all operations
+            const currentBranchId = '@ViewBag.userBranchCode';
+
+            // Export report
+            $('#exportReport').on('click', function() {
+                exportReport();
+            });
+
+            // Fix for action buttons - delegate events to work with dynamic content
+            $(document).on('click', '.view-details', function() {
+                const glId = $(this).data('gl-id');
+                viewAccountDetails(glId);
+            });
+
+            $(document).on('click', '.expand-children', function() {
+                const glId = $(this).data('gl-id');
+                loadChildren(glId);
+            });
+
+            // Search functionality
+            $('#searchButton').on('click', filterAccounts);
+            $('#searchAccounts').on('keyup', filterAccounts);
+
+            // TRANSACTION SEARCH - UPDATED VERSION WITH GL ACCOUNT SEARCH
+            $('#searchTransactions').click(function() {
+                console.log('Search button clicked');
+                performTransactionSearch();
+            });
+
+            // Field visibility for query type - UPDATED
+            $('#queryType').change(function() {
+                const type = $(this).val();
+
+                // Hide all fields first
+                $('#refField, #glField, #startDateField, #endDateField').hide();
+
+                // Show fields based on query type
+                if (type === 'ref') {
+                    $('#refField').show();
+                }
+                else if (type === 'gl') {
+                    $('#glField').show();
+                }
+                else if (type === 'gl-date') {
+                    $('#glField').show();
+                    $('#startDateField').show();
+                    $('#endDateField').show();
+                }
+                else if (type === 'date') {
+                    $('#startDateField').show();
+                    $('#endDateField').show();
+                }
+            }).trigger('change');
+
+            function performTransactionSearch() {
+                const queryType = $('#queryType').val();
+                const transactionRef = $('#transactionRef').val().trim();
+                const glId = $('#glIdSearch').val().trim();
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+                const branchId = currentBranchId;
+
+                console.log('Search parameters:', {
+                    queryType,
+                    transactionRef,
+                    glId,
+                    startDate,
+                    endDate
+                });
+
+                // Validation based on query type
+                if (queryType === 'ref' && !transactionRef) {
+                    alert('يرجى إدخال الرقم المرجعي');
+                    return;
+                }
+
+                if (queryType === 'gl' && !glId) {
+                    alert('يرجى إدخال رقم الحساب');
+                    return;
+                }
+
+                if (queryType === 'date' && (!startDate || !endDate)) {
+                    alert('يرجى إدخال التاريخ');
+                    return;
+                }
+
+                if (queryType === 'gl-date' && (!glId || !startDate || !endDate)) {
+                    alert('يرجى إدخال رقم الحساب والتاريخ');
+                    return;
+                }
+
+                // Show loading
+                showLoading();
+
+                // Prepare data
+                const requestData = {
+                    branchId: branchId,
+                    transactionRef: transactionRef,
+                    glId: glId, // Add GL ID to request
+                    startDate: startDate,
+                    endDate: endDate
+                };
+
+                // Determine API URL based on query type
+                let apiUrl;
+                switch(queryType) {
+                    case 'ref':
+                        apiUrl = '/api/GlTreeReport/transactions/by-ref-branch';
+                        break;
+                    case 'date':
+                        apiUrl = '/api/GlTreeReport/transactions/by-date-branch';
+                        break;
+                    case 'gl':
+                        apiUrl = '/api/GlTreeReport/transactions/by-gl-branch';
+                        break;
+                    case 'gl-date':
+                        apiUrl = '/api/GlTreeReport/transactions/by-gl-date-branch';
+                        break;
+                    default:
+                        apiUrl = '/api/GlTreeReport/transactions/by-ref-branch';
+                }
+
+                console.log('Making request to:', apiUrl, 'with data:', requestData);
+
+                // Make request
+                $.ajax({
+                    url: apiUrl,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function(transactions) {
+                        console.log('Received transactions:', transactions);
+                        if (transactions && Array.isArray(transactions)) {
+                            // Check if this is a GL account query
+                            const isGlQuery = queryType === 'gl' || queryType === 'gl-date';
+
+                            if (isGlQuery && glId) {
+                                // For GL account queries, fetch account cumulative data
+                                fetchAccountCumulativeData(glId, branchId, function(accountData) {
+                                    if (accountData) {
+                                        showBankStyleResultsWithAccountData(transactions, queryType, requestData, glId, accountData);
+                                    } else {
+                                        // Fallback to basic results
+                                        showBankStyleResults(transactions, queryType, requestData, glId);
+                                    }
+                                });
+                            } else {
+                                // For non-GL queries, show basic results
+                                showBankStyleResults(transactions, queryType, requestData, null);
+                            }
+                        } else {
+                            console.error('Invalid response format:', transactions);
+                            showError('استجابة غير صالحة من الخادم');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', status, error, xhr);
+                        let errorMsg = 'خطأ في الاتصال بالخادم';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        } else if (xhr.statusText) {
+                            errorMsg = xhr.statusText;
+                        }
+                        showError(errorMsg);
+                    },
+                    complete: function() {
+                        hideLoading();
+                    }
+                });
+            }
+
+            // NEW FUNCTION: Fetch account cumulative data from main table API
+            function fetchAccountCumulativeData(glId, branchId, callback) {
+                $.ajax({
+                    url: `/api/GlTreeReport/account/${glId}/details?branchId=${branchId}`,
+                    type: 'GET',
+                    success: function(accountData) {
+                        console.log('Account cumulative data fetched:', accountData);
+                        callback(accountData);
+                    },
+                    error: function(xhr) {
+                        console.error('Error fetching account data:', xhr);
+                        callback(null);
+                    }
+                });
+            }
+
+            // NEW FUNCTION: Show results with account cumulative data
+            function showBankStyleResultsWithAccountData(transactions, queryType, requestData, glId, accountData) {
+                console.log('Displaying results with account cumulative data');
+
+                // Get GL account name from first transaction or account data
+                const glName = transactions[0]?.glName || accountData?.glName || 'غير معروف';
+
+                // Get cumulative data from accountData (same as main table)
+                const cumulativeDebit = accountData.debit || accountData.ownDebit || 0;
+                const cumulativeCredit = accountData.credit || accountData.ownCredit || 0;
+                const cumulativeBalance = accountData.balance || accountData.ownBalance || 0;
+
+                // Calculate totals from individual transactions
+                let totalTransactionDebit = 0;
+                let totalTransactionCredit = 0;
+                let totalTransactionBalance = 0;
+
+                transactions.forEach(trans => {
+                    const debit = trans.debitAccount || trans.debit || 0;
+                    const credit = trans.creditAccount || trans.credit || 0;
+                    totalTransactionDebit += debit;
+                    totalTransactionCredit += credit;
+                    totalTransactionBalance += (credit - debit);
+                });
+
+                const totalTransactions = transactions.length;
+
+                let html = '<div class="p-3">';
+
+                // Account Summary Header with CUMULATIVE DATA
+                html += `
+                    <!-- Account Summary Header -->
+                    <div class="account-summary-card mb-4 p-3 border rounded" style="background-color: #f8f9fa;">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6 class="mb-1"><i class="fas fa-file-invoice-dollar me-2"></i>بيانات الحساب التراكمية</h6>
+                                <div class="small">
+                                    <div><strong>رقم الحساب:</strong> ${glId}</div>
+                                    <div><strong>اسم الحساب:</strong> ${glName}</div>
+                                    <div><strong>عدد المعاملات:</strong> ${totalTransactions}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="small text-muted">المدين التراكمي</div>
+                                    <div class="h5 text-danger fw-bold">${formatCurrency(cumulativeDebit)}</div>
+                                    <small class="text-muted">(بما في ذلك الحسابات الفرعية)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="small text-muted">الدائن التراكمي</div>
+                                    <div class="h5 text-success fw-bold">${formatCurrency(cumulativeCredit)}</div>
+                                    <small class="text-muted">(بما في ذلك الحسابات الفرعية)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="small text-muted">الرصيد التراكمي</div>
+                                    <div class="h4 fw-bold ${cumulativeBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                        ${formatCurrency(cumulativeBalance)}
+                                    </div>
+                                    <small class="text-muted">(الدائن - المدين)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <div class="small text-muted border-top pt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>توضيح:</strong> البيانات التراكمية أعلاه تطابق الجدول الرئيسي وتشمل جميع الحسابات الفرعية
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Rest of the display code...
+                html += getTransactionsTableHtml(transactions, queryType, requestData,
+                    totalTransactionDebit, totalTransactionCredit, totalTransactionBalance,
+                    cumulativeDebit, cumulativeCredit, cumulativeBalance);
+
+                html += '</div>';
+
+                $('#transactionResultsContent').html(html);
+                $('#transactionResultsModal').modal('show');
+            }
+
+            // NEW FUNCTION: Get transactions table HTML
+            function getTransactionsTableHtml(transactions, queryType, requestData,
+                totalTransactionDebit, totalTransactionCredit, totalTransactionBalance,
+                cumulativeDebit, cumulativeCredit, cumulativeBalance) {
+
+                const totalTransactions = transactions.length;
+                const searchCriteria = getSearchCriteriaText(queryType, requestData);
+
+                return `
+                    <!-- Simple Header Section -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                        <div>
+                            <h5 class="mb-1">نتائج استعلام المعاملات</h5>
+                            <p class="text-muted mb-0 small">
+                                ${searchCriteria}
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary">${totalTransactions} معاملة</span>
+                        </div>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    <div class="border">
+                        <div class="bg-light p-2 border-bottom">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6 class="mb-0">تفاصيل المعاملات الفردية</h6>
+                                    <small class="text-muted">(هذا الجدول يظهر المعاملات الفردية فقط)</small>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <small class="text-muted">الفرع ${currentBranchId}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive" style="max-height: 500px;">
+                            <table class="table table-bordered table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="120" class="text-center">الرقم المرجعي</th>
+                                        <th width="100" class="text-center">التاريخ</th>
+                                        <th width="100" class="text-center">الحساب</th>
+                                        <th class="text-center">اسم الحساب</th>
+                                        <th width="120" class="text-center">المدين</th>
+                                        <th width="120" class="text-center">الدائن</th>
+                                        <th width="120" class="text-center">صافي المعاملة</th>
+                                        <th class="text-center">الوصف</th>
+                                        <th width="80" class="text-center">الفرع</th>
+                                        <th width="100" class="text-center">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${transactions.map((trans, index) => {
+                                        const debit = trans.debitAccount || trans.debit || 0;
+                                        const credit = trans.creditAccount || trans.credit || 0;
+                                        const transactionBalance = credit - debit;
+                                        const date = trans.date ? new Date(trans.date).toLocaleDateString('ar-EG') : 'N/A';
+
+                                        return `
+                                            <tr class="${index % 2 === 0 ? 'even-row' : 'odd-row'}">
+                                                <td class="fw-bold text-center">${trans.transactionRef || 'N/A'}</td>
+                                                <td class="text-center">${date}</td>
+                                                <td class="fw-bold text-center">${trans.glId || 'N/A'}</td>
+                                                <td class="text-center">${trans.glName || 'N/A'}</td>
+                                                <td class="text-end fw-bold ${debit > 0 ? 'text-danger' : 'text-muted'}">
+                                                    ${debit > 0 ? formatCurrency(debit) : '0.00'}
+                                                </td>
+                                                <td class="text-end fw-bold ${credit > 0 ? 'text-success' : 'text-muted'}">
+                                                    ${credit > 0 ? formatCurrency(credit) : '0.00'}
+                                                </td>
+                                                <td class="text-end fw-bold ${transactionBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                                    ${formatCurrency(transactionBalance)}
+                                                </td>
+                                                <td class="text-center">
+                                                    <span title="${trans.descriptionEn || trans.descriptionAr || ''}">
+                                                        ${trans.descriptionAr || trans.descriptionEn || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-secondary">${trans.branchId || 'N/A'}</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-success">${trans.status || 'مكتمل'}</span>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <!-- Individual Transactions Totals -->
+                                    <tr>
+                                        <th colspan="4" class="text-center">مجموع المعاملات الموجودة</th>
+                                        <th class="text-end">${formatCurrency(totalTransactionDebit)}</th>
+                                        <th class="text-end">${formatCurrency(totalTransactionCredit)}</th>
+                                        <th class="text-end ${totalTransactionBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                            ${formatCurrency(totalTransactionBalance)}
+                                        </th>
+                                        <th colspan="3" class="text-center"></th>
+                                    </tr>
+                                    <!-- Cumulative Account Totals (From Main Table) -->
+                                    <tr style="background-color: #e3f2fd;">
+                                        <th colspan="4" class="text-center">المجاميع التراكمية للحساب (مثل الجدول الرئيسي)</th>
+                                        <th class="text-end">${formatCurrency(cumulativeDebit)}</th>
+                                        <th class="text-end">${formatCurrency(cumulativeCredit)}</th>
+                                        <th class="text-end ${cumulativeBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                            ${formatCurrency(cumulativeBalance)}
+                                        </th>
+                                        <th colspan="3" class="text-center">
+                                            <small class="text-muted">يشمل الحسابات الفرعية</small>
+                                        </th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle me-2"></i>توضيح:</h6>
+                                <ul class="mb-0">
+                                    <li>الجدول أعلاه يظهر <strong>المعاملات الفردية</strong> فقط التي تطابق معايير البحث</li>
+                                    <li>المجاميع التراكمية في أسفل الجدول تظهر <strong>إجمالي الحساب بما في ذلك الحسابات الفرعية</strong> (مثل الجدول الرئيسي)</li>
+                                    <li>الفرق بين معاملات البحث والإجمالي التراكمي بسبب وجود حسابات فرعية</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Original function for basic results (non-GL queries)
+            function showBankStyleResults(transactions, queryType, requestData, glId) {
+                console.log('Displaying basic results for', transactions.length, 'transactions');
+
+                let html = '<div class="p-3">';
+
+                if (!transactions || transactions.length === 0) {
+                    html += `
+                        <div class="text-center py-4">
+                            <h5 class="text-muted">لا توجد نتائج للبحث</h5>
+                            <p class="text-muted">لم يتم العثور على معاملات تطابق معايير البحث</p>
+                            <div class="mt-2">
+                                <small class="text-muted">${getSearchCriteriaText(queryType, requestData)}</small>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Calculate totals for ALL columns
+                    const totalDebit = transactions.reduce((sum, t) => sum + (t.debitAccount || t.debit || 0), 0);
+                    const totalCredit = transactions.reduce((sum, t) => sum + (t.creditAccount || t.credit || 0), 0);
+                    const totalTransactions = transactions.length;
+                    const totalBalance = totalCredit - totalDebit;
+
+                    html += `
+                        <!-- Simple Header Section -->
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                            <div>
+                                <h5 class="mb-1">نتائج استعلام المعاملات</h5>
+                                <p class="text-muted mb-0 small">
+                                    ${getSearchCriteriaText(queryType, requestData)}
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">${totalTransactions} معاملة</span>
+                            </div>
+                        </div>
+
+                        <!-- Transactions Table -->
+                        <div class="border">
+                            <div class="bg-light p-2 border-bottom">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h6 class="mb-0">تفاصيل المعاملات</h6>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">الفرع ${currentBranchId}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="max-height: 500px;">
+                                <table class="table table-bordered table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="120" class="text-center">الرقم المرجعي</th>
+                                            <th width="100" class="text-center">التاريخ</th>
+                                            <th width="100" class="text-center">الحساب</th>
+                                            <th class="text-center">اسم الحساب</th>
+                                            <th width="120" class="text-center">المدين</th>
+                                            <th width="120" class="text-center">الدائن</th>
+                                            <th width="120" class="text-center">صافي المعاملة</th>
+                                            <th class="text-center">الوصف</th>
+                                            <th width="80" class="text-center">الفرع</th>
+                                            <th width="100" class="text-center">الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+
+                    transactions.forEach((trans, index) => {
+                        const debit = trans.debitAccount || trans.debit || 0;
+                        const credit = trans.creditAccount || trans.credit || 0;
+                        const transactionBalance = credit - debit;
+                        const date = trans.date ? new Date(trans.date).toLocaleDateString('ar-EG') : 'N/A';
+
+                        html += `
+                            <tr class="${index % 2 === 0 ? 'even-row' : 'odd-row'}">
+                                <td class="fw-bold text-center">${trans.transactionRef || 'N/A'}</td>
+                                <td class="text-center">${date}</td>
+                                <td class="fw-bold text-center">${trans.glId || 'N/A'}</td>
+                                <td class="text-center">${trans.glName || 'N/A'}</td>
+                                <td class="text-end fw-bold ${debit > 0 ? 'text-danger' : 'text-muted'}">
+                                    ${debit > 0 ? formatCurrency(debit) : '0.00'}
+                                </td>
+                                <td class="text-end fw-bold ${credit > 0 ? 'text-success' : 'text-muted'}">
+                                    ${credit > 0 ? formatCurrency(credit) : '0.00'}
+                                </td>
+                                <td class="text-end fw-bold ${transactionBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                    ${formatCurrency(transactionBalance)}
+                                </td>
+                                <td class="text-center">
+                                    <span title="${trans.descriptionEn || trans.descriptionAr || ''}">
+                                        ${trans.descriptionAr || trans.descriptionEn || 'N/A'}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">${trans.branchId || 'N/A'}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">${trans.status || 'مكتمل'}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                    </tbody>
+                                    <tfoot class="table-secondary">
+                                        <tr>
+                                            <th colspan="4" class="text-center">المجاميع النهائية</th>
+                                            <th class="text-end">${formatCurrency(totalDebit)}</th>
+                                            <th class="text-end">${formatCurrency(totalCredit)}</th>
+                                            <th class="text-end ${totalBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                                ${formatCurrency(totalBalance)}
+                                            </th>
+                                            <th colspan="3" class="text-center"></th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Simple Summary Info -->
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="border p-2">
+                                    <h6>ملخص البحث</h6>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">عدد المعاملات:</small>
+                                            <div class="fw-bold">${totalTransactions}</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">الفترة:</small>
+                                            <div class="fw-bold">${requestData.startDate || 'N/A'} إلى ${requestData.endDate || 'N/A'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border p-2">
+                                    <h6>التحليل المالي</h6>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">نسبة المدين:</small>
+                                            <div class="fw-bold text-danger">${calculatePercentage(totalDebit, totalDebit + totalCredit)}%</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">نسبة الدائن:</small>
+                                            <div class="fw-bold text-success">${calculatePercentage(totalCredit, totalDebit + totalCredit)}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+
+                console.log('Setting HTML content');
+                $('#transactionResultsContent').html(html);
+                $('#transactionResultsModal').modal('show');
+            }
+
+            function getSearchCriteriaText(queryType, requestData) {
+                if (queryType === 'ref') {
+                    return `بحث بالرقم المرجعي: ${requestData.transactionRef}`;
+                } else if (queryType === 'gl') {
+                    return `بحث برقم الحساب: ${requestData.glId}`;
+                } else if (queryType === 'gl-date') {
+                    return `بحث برقم الحساب: ${requestData.glId} والفترة: ${requestData.startDate} إلى ${requestData.endDate}`;
+                } else {
+                    return `بحث بالفترة: ${requestData.startDate} إلى ${requestData.endDate}`;
+                }
+            }
+
+            function formatCurrency(amount) {
+                return parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            }
+
+            function calculatePercentage(part, total) {
+                if (total === 0) return '0.0';
+                return ((part / total) * 100).toFixed(1);
+            }
+
+            function showError(message) {
+                const html = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <h4 class="text-danger">حدث خطأ</h4>
+                        <p class="text-muted">${message}</p>
+                        <button class="btn btn-primary mt-3" onclick="$('#transactionResultsModal').modal('hide')">
+                            <i class="fas fa-times me-1"></i>إغلاق
+                        </button>
+                    </div>
+                `;
+                $('#transactionResultsContent').html(html);
+                $('#transactionResultsModal').modal('show');
+            }
+
+            function exportReport() {
+                console.log('Exporting for branch:', currentBranchId);
+
+                // Show loading
+                showLoading();
+
+                // Use the branch-specific API endpoint
+                $.ajax({
+                    url: `/api/GlTreeReport/branch/${currentBranchId}/flat`,
+                    type: 'GET',
+                    success: function(response) {
+                        console.log('Export response:', response);
+                        if (response && response.length > 0) {
+                            // Filter to get only Main Categories (Depth = 0)
+                            const mainCategories = response.filter(item => item.depth === 0);
+
+                            if (mainCategories.length > 0) {
+                                const asOfDate = new Date().toISOString().split('T')[0];
+                                generateExcelFile(mainCategories, currentBranchId, asOfDate);
+                            } else {
+                                alert('لا توجد حسابات رئيسية للتصدير');
+                            }
+                        } else {
+                            alert('لا توجد بيانات للتصدير للفرع المحدد');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error exporting report:', xhr);
+                        let errorMsg = 'حدث خطأ أثناء تصدير التقرير';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg += ': ' + xhr.responseJSON.message;
+                        } else if (xhr.statusText) {
+                            errorMsg += ': ' + xhr.statusText;
+                        }
+                        alert(errorMsg);
+                    },
+                    complete: function() {
+                        hideLoading();
+                    }
+                });
+            }
+
+            function generateExcelFile(data, branchId, asOfDate) {
+                // Show loading indicator
+                showLoading();
+
+                try {
+                    // Check if ExcelJS is available
+                    if (typeof ExcelJS === 'undefined') {
+                        alert('مكتبة ExcelJS غير محملة. يرجى التحقق من الاتصال بالإنترنت');
+                        return;
+                    }
+
+                    console.log('Generating Excel with ExcelJS from data:', data);
+
+                    // Filter for Main Categories ONLY (Depth = 0)
+                    const mainCategories = data.filter(item => item.depth === 0);
+                    console.log('Main Categories found:', mainCategories.length, 'out of', data.length, 'total accounts');
+
+                    // Create workbook with ExcelJS
+                    const workbook = new ExcelJS.Workbook();
+                    workbook.creator = 'Banking System';
+                    workbook.lastModifiedBy = 'Banking System';
+                    workbook.created = new Date();
+                    workbook.modified = new Date();
+
+                    // Add worksheet with RTL support
+                    const worksheet = workbook.addWorksheet('تقرير حسابات رئيسية', {
+                        pageSetup: {
+                            paperSize: 9,
+                            orientation: 'landscape',
+                            showGridLines: false
+                        },
+                        views: [
+                            { rightToLeft: true } // RTL support
+                        ]
+                    });
+
+                    // Define columns - ONLY MAIN CATEGORIES with requested columns
+                    worksheet.columns = [
+                        { header: 'رقم الدليل', key: 'glId', width: 20 },
+                        { header: 'اسم الاستاذ العام', key: 'glName', width: 40 },
+                        { header: 'رصيد المدين', key: 'debitBalance', width: 15 },
+                        { header: 'رصيد الدائن', key: 'creditBalance', width: 15 },
+                        { header: 'الرصيد الإجمالي', key: 'totalBalance', width: 15 }
+                    ];
+
+                    // Add header row with DARK BLUE color
+                    const headerRow = worksheet.getRow(1);
+                    headerRow.height = 25;
+                    headerRow.eachCell((cell, colNumber) => {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FF1a3a6c' } // Dark Blue (same as your website theme)
+                        };
+                        cell.font = {
+                            bold: true,
+                            color: { argb: 'FFFFFFFF' }, // White text
+                            size: 12
+                        };
+                        cell.border = {
+                            top: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+                            left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+                            bottom: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+                            right: { style: 'thin', color: { argb: 'FFFFFFFF' } }
+                        };
+                        cell.alignment = {
+                            vertical: 'middle',
+                            horizontal: 'center',
+                            wrapText: true
+                        };
+                    });
+
+                    let totalDebit = 0;
+                    let totalCredit = 0;
+                    let totalBalance = 0;
+
+                    // Add data rows for MAIN CATEGORIES ONLY
+                    mainCategories.forEach((account, index) => {
+                        const debitBalance = account.debit || 0;
+                        const creditBalance = account.credit || 0;
+                        const totalBalanceValue = account.balance || 0;
+
+                        totalDebit += debitBalance;
+                        totalCredit += creditBalance;
+                        totalBalance += totalBalanceValue;
+
+                        const rowData = {
+                            glId: account.glId || '',
+                            glName: account.glName || '',
+                            debitBalance: debitBalance,
+                            creditBalance: creditBalance,
+                            totalBalance: totalBalanceValue
+                        };
+
+                        const row = worksheet.addRow(rowData);
+                        row.height = 22; // Set row height
+
+                        // Apply styling to each cell in the row
+                        row.eachCell((cell, colNumber) => {
+                            // Default borders for all cells
+                            cell.border = {
+                                top: { style: 'thin', color: { argb: 'FF000000' } },
+                                left: { style: 'thin', color: { argb: 'FF000000' } },
+                                bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                                right: { style: 'thin', color: { argb: 'FF000000' } }
+                            };
+
+                            // Right align for all cells except GL ID (center it)
+                            if (colNumber === 1) { // GL ID column
+                                cell.alignment = {
+                                    vertical: 'middle',
+                                    horizontal: 'center',
+                                    wrapText: true
+                                };
+                            } else { // Other columns
+                                cell.alignment = {
+                                    vertical: 'middle',
+                                    horizontal: 'right',
+                                    wrapText: true
+                                };
+                            }
+
+                            // Apply alternating row colors for better readability
+                            let backgroundColor = { argb: 'FFFFFFFF' }; // Default white
+
+                            if (index % 2 === 0) {
+                                // Even rows: Light gray background
+                                backgroundColor = { argb: 'FFF8F9FA' };
+                            } else {
+                                // Odd rows: Very light blue background
+                                backgroundColor = { argb: 'FFF0F8FF' };
+                            }
+
+                            // Apply the background color to ALL cells in the row
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: backgroundColor
+                            };
+
+                            // Bold font for GL ID and Name
+                            if (colNumber === 1 || colNumber === 2) {
+                                cell.font = { bold: true };
+                            }
+
+                            // Number formatting for balance columns (columns 3-5)
+                            if (colNumber >= 3 && colNumber <= 5) {
+                                cell.numFmt = '#,##0.00';
+
+                                // Color coding for debit column (column 3)
+                                if (colNumber === 3 && debitBalance > 0) {
+                                    cell.font = {
+                                        ...cell.font,
+                                        color: { argb: 'FF8B0000' } // Dark Red for debit
+                                    };
+                                }
+
+                                // Color coding for credit column (column 4)
+                                if (colNumber === 4 && creditBalance > 0) {
+                                    cell.font = {
+                                        ...cell.font,
+                                        color: { argb: 'FF006400' } // Dark Green for credit
+                                    };
+                                }
+
+                                // Color coding for total balance column (column 5)
+                                if (colNumber === 5) {
+                                    if (totalBalanceValue >= 0) {
+                                        cell.font = {
+                                            ...cell.font,
+                                            color: { argb: 'FF006400' } // Dark Green for positive
+                                        };
+                                    } else {
+                                        cell.font = {
+                                            ...cell.font,
+                                            color: { argb: 'FF8B0000' } // Dark Red for negative
+                                        };
+                                    }
+                                }
+                            }
+                        });
+                    });
+
+                    // Add separator row
+                    worksheet.addRow([]);
+
+                    // Add TOTALS row with DARK BLUE background
+                    const totalsRow = worksheet.addRow({
+                        glId: 'المجموع',
+                        glName: '',
+                        debitBalance: totalDebit,
+                        creditBalance: totalCredit,
+                        totalBalance: totalBalance
+                    });
+
+                    // Style totals row - DARK BLUE background
+                    totalsRow.height = 25;
+                    totalsRow.eachCell((cell, colNumber) => {
+                        // Apply dark blue background to ALL cells in totals row
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FF1a3a6c' } // Dark Blue
+                        };
+
+                        // White bold text for all cells
+                        cell.font = {
+                            bold: true,
+                            color: { argb: 'FFFFFFFF' } // White text
+                        };
+
+                        // Borders for totals row
+                        cell.border = {
+                            top: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+                            left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+                            bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+                            right: { style: 'thin', color: { argb: 'FFFFFFFF' } }
+                        };
+
+                        // Center alignment for first column, right alignment for others
+                        if (colNumber === 1) {
+                            cell.alignment = {
+                                vertical: 'middle',
+                                horizontal: 'center',
+                                wrapText: true
+                            };
+                        } else {
+                            cell.alignment = {
+                                vertical: 'middle',
+                                horizontal: 'right',
+                                wrapText: true
+                            };
+                        }
+
+                        // Number formatting for balance columns (columns 3-5)
+                        if (colNumber >= 3 && colNumber <= 5) {
+                            cell.numFmt = '#,##0.00';
+
+                            // Color coding for totals columns
+                            if (colNumber === 3) { // Debit total
+                                cell.font.color = { argb: 'FFFFB6C1' }; // Light Red
+                            } else if (colNumber === 4) { // Credit total
+                                cell.font.color = { argb: 'FF90EE90' }; // Light Green
+                            } else if (colNumber === 5) { // Balance total
+                                if (totalBalance >= 0) {
+                                    cell.font.color = { argb: 'FF90EE90' }; // Light Green
+                                } else {
+                                    cell.font.color = { argb: 'FFFFB6C1' }; // Light Red
+                                }
+                            }
+                        }
+                    });
+
+                    // Add summary info row (optional)
+                    const summaryRow = worksheet.addRow({
+                        glId: 'ملخص',
+                        glName: `عدد الحسابات الرئيسية: ${mainCategories.length}`,
+                        debitBalance: '',
+                        creditBalance: '',
+                        totalBalance: `تاريخ التقرير: ${asOfDate}`
+                    });
+
+                    // Merge cells for the summary
+                    worksheet.mergeCells(`A${summaryRow.number}:E${summaryRow.number}`);
+
+                    // Style summary row
+                    summaryRow.eachCell((cell, colNumber) => {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFF0F0F0' } // Light Gray
+                        };
+                        cell.font = {
+                            italic: true,
+                            color: { argb: 'FF666666' }
+                        };
+                        cell.alignment = {
+                            vertical: 'middle',
+                            horizontal: 'center'
+                        };
+                    });
+
+                    // Freeze the header row
+                    worksheet.views = [
+                        { state: 'frozen', xSplit: 0, ySplit: 1, rightToLeft: true }
+                    ];
+
+                    // Set column widths for better formatting
+                    worksheet.columns.forEach(column => {
+                        if (column.key === 'glId') column.width = 20;
+                        if (column.key === 'glName') column.width = 40;
+                        if (column.key === 'debitBalance') column.width = 15;
+                        if (column.key === 'creditBalance') column.width = 15;
+                        if (column.key === 'totalBalance') column.width = 15;
+                    });
+
+                    // Generate file name
+                    const fileName = `تقرير_الحسابات_الرئيسية_الفرع_${branchId}_${asOfDate}.xlsx`;
+
+                    // Write to file and download
+                    workbook.xlsx.writeBuffer().then(buffer => {
+                        saveAs(new Blob([buffer]), fileName);
+                        hideLoading();
+
+                        // Show success message
+                        // alert(`تم تصدير ${mainCategories.length} حساب رئيسي بنجاح إلى ملف Excel`);
+                    }).catch(error => {
+                        console.error('Error writing Excel file:', error);
+                        alert('حدث خطأ أثناء إنشاء ملف Excel');
+                        hideLoading();
+                    });
+
+                } catch (error) {
+                    console.error('Error generating Excel file:', error);
+                    alert('حدث خطأ أثناء إنشاء ملف Excel: ' + error.message);
+                    hideLoading();
+                }
+            }
+
+            function viewAccountDetails(glId) {
+                $.ajax({
+                    url: `/api/GlTreeReport/account/${glId}/details?branchId=${currentBranchId}`,
+                    type: 'GET',
+                    success: function(response) {
+                        // Create a beautiful modal for account details
+                        const detailsHtml = `
+                            <div class="account-details-modal">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">رقم الحساب:</label>
+                                            <span>${response.glId || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">اسم الحساب:</label>
+                                            <span>${response.glName || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">المستوى:</label>
+                                            <span class="badge bg-info">${response.level || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">الرصيد الإجمالي:</label>
+                                            <span class="${(response.balance || 0) >= 0 ? 'text-success' : 'text-danger'} fw-bold">
+                                                ${(response.balance || 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">الرصيد الخاص:</label>
+                                            <span class="${(response.ownBalance || 0) >= 0 ? 'text-success' : 'text-danger'}">
+                                                ${(response.ownBalance || 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">الحساب الرئيسي:</label>
+                                            <span>${response.parentGlId || 'لا يوجد'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">عدد الحسابات الفرعية:</label>
+                                            <span class="badge bg-warning">${response.childCount || 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                ${response.hasTransactions ?
+                                    '<div class="alert alert-success"><i class="fas fa-check-circle"></i> يحتوي على معاملات</div>' :
+                                    '<div class="alert alert-secondary"><i class="fas fa-info-circle"></i> لا يحتوي على معاملات مباشرة</div>'
+                                }
+                                ${response.children && response.children.length > 0 ?
+                                    `<div class="children-section">
+                                        <h6 class="fw-bold border-bottom pb-2">الحسابات الفرعية (${response.children.length})</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>رقم الحساب</th>
+                                                        <th>الاسم</th>
+                                                        <th>الرصيد</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${response.children.map(child => `
+                                                        <tr>
+                                                            <td class="fw-bold">${child.glId}</td>
+                                                            <td>${child.glName}</td>
+                                                            <td class="${(child.balance || 0) >= 0 ? 'text-success' : 'text-danger'}">
+                                                                ${(child.balance || 0).toFixed(2)}
+                                                            </td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>` :
+                                    '<p class="text-muted">لا توجد حسابات فرعية</p>'
+                                }
+                            </div>
+                        `;
+
+                        // Show in a beautiful modal
+                        $('#transactionsContent').html(detailsHtml);
+                        $('#transactionsModalLabel').html(`<i class="fas fa-eye me-1"></i>تفاصيل الحساب ${glId}`);
+                        $('#transactionsModal').modal('show');
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading account details:', xhr);
+                        alert('حدث خطأ أثناء تحميل تفاصيل الحساب');
+                    }
+                });
+            }
+
+            function loadChildren(parentGlId) {
+                $.ajax({
+                    url: `/api/GlTreeReport/parent/${parentGlId}?branchId=${currentBranchId}`,
+                    type: 'GET',
+                    success: function(response) {
+                        // Add children to the table
+                        alert(`تم تحميل ${response.length} حساب فرعي`);
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading children:', xhr);
+                        alert('حدث خطأ أثناء تحميل الحسابات الفرعية');
+                    }
+                });
+            }
+
+            function filterAccounts() {
+                const searchText = $('#searchAccounts').val().toLowerCase();
+                $('#reportTable tbody tr').each(function() {
+                    const glId = $(this).find('td:eq(0)').text().toLowerCase();
+                    const glName = $(this).find('td:eq(1)').text().toLowerCase();
+                    if (glId.includes(searchText) || glName.includes(searchText)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            function showLoading() {
+                $('body').append(`
+                    <div class="loading-overlay">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">جاري التحميل...</span>
+                        </div>
+                    </div>
+                `);
+            }
+
+            function hideLoading() {
+                $('.loading-overlay').remove();
+            }
+        });
+    </script>
+}

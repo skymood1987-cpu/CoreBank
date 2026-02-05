@@ -1,0 +1,226 @@
+﻿@model MinCoreBank.Models.GlTransaction
+
+@{
+    ViewData["Title"] = "ترجيع القيد";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container" dir="rtl">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-undo fa-lg ms-2"></i>@ViewData["Title"]
+        </h1>
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle ms-2"></i>
+                <strong>تنبيه:</strong> أنت على وشك ترجيع القيد رقم <strong>@Model.TransactionRef</strong>. سيتم إنشاء قيد مرتجع معكوس.
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">رقم التعريف :</label>
+                        <p class="form-control-plaintext">@Model.TransactionRef</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">التاريخ:</label>
+                        <p class="form-control-plaintext">@Model.Date?.ToString("yyyy-MM-dd")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب المدين:</label>
+                        <p class="form-control-plaintext">@Model.DebitAccount</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب الدائن:</label>
+                        <p class="form-control-plaintext">@Model.CreditAccount</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">العملة:</label>
+                        <p class="form-control-plaintext">@Model.Currency</p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="reverseForm">
+                <input type="hidden" name="originalTransactionId" value="@Model.Id" />
+
+                <div class="mb-3">
+                    <label for="reverseReason" class="form-label fw-bold">سبب الترجيع <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="reverseReason" name="reverseReason" rows="3" required
+                              placeholder="يرجى كتابة سبب ترجيع القيد..."></textarea>
+                </div>
+
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-undo ms-2"></i>تأكيد الترجيع
+                    </button>
+                    <a href="@Url.Action("Details", "GlTransactionsView", new { id = Model.Id })" class="btn btn-secondary me-2">
+                        <i class="fas fa-times ms-2"></i>إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .banking-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .page-title {
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .banking-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            border: none;
+            overflow: hidden;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+            border-radius: 8px;
+        }
+
+        .form-label {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control-plaintext {
+            padding: 10px 0;
+            color: #5a5c69;
+            min-height: 30px;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+        }
+
+            .form-control:focus {
+                border-color: #3498db;
+                box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+            }
+
+        .btn {
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+            .btn-danger:hover {
+                background-color: #bb2d3b;
+                border-color: #b02a37;
+                transform: translateY(-2px);
+            }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+            .btn-secondary:hover {
+                background-color: #5a6268;
+                border-color: #545b62;
+                transform: translateY(-2px);
+            }
+
+        @@media (max-width: 768px) {
+            .card-body {
+                padding: 20px;
+            }
+
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#reverseForm').on('submit', function(e) {
+                e.preventDefault();
+
+                if (!confirm('هل أنت متأكد من ترجيع هذا القيد؟ لا يمكن التراجع عن هذه العملية.')) {
+                    return;
+                }
+
+                const formData = {
+                    originalTransactionId: '@Model.Id',
+                    reverseReason: $('#reverseReason').val()
+                };
+
+                $.ajax({
+                    url: '/api/GlTransactions/reverse',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('تم ترجيع القيد بنجاح!');
+                        window.location.href = '/GlTransactionsView/Index';
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr);
+
+                        let errorMessage = 'حدث خطأ أثناء ترجيع القيد. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.status === 400) {
+                            errorMessage = 'بيانات غير صحيحة. يرجى التحقق من المدخلات.';
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            });
+        });
+    </script>
+}

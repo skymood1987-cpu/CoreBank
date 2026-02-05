@@ -1,0 +1,114 @@
+﻿
+@model MinCoreBank.Models.GeneralLedgerAccount
+
+@{
+    ViewData["Title"] = "حذف الحساب";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-trash fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+     
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <h4 class="text-danger mb-4">هل أنت متأكد من أنك تريد حذف هذا الحساب؟</h4>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>تحذير:</strong> هذا الإجراء لا يمكن التراجع عنه. سيتم إغلاق الحساب وليس حذفه نهائيًا.
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">رقم الحساب:</label>
+                        <p class="form-control-plaintext">@Model.Id</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الاسم بالعربية:</label>
+                        <p class="form-control-plaintext">@Model.NameAr</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الرصيد:</label>
+                        <p class="form-control-plaintext">@Model.Balance.ToString("N2")</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحالة الحالية:</label>
+                        <p class="form-control-plaintext">
+                            <span class="badge @(Model.Status == "active" ? "bg-success" : "bg-secondary")">
+                                @(Model.Status == "active" ? "نشط" : "مغلق")
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="deleteForm">
+                <input type="hidden" id="AccountId" value="@Model.Id" />
+
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>تأكيد الحذف
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Handle form submission
+            $('#deleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const accountId = $('#AccountId').val();
+
+                $.ajax({
+                    url: `/api/GeneralLedger/deletegl/${accountId}`,
+                    type: 'PUT',
+                    success: function() {
+                        showAlert('تم حذف الحساب بنجاح', 'success');
+                        setTimeout(() => window.location.href = '@Url.Action("Index")', 1000);
+                    },
+                    error: function() {
+                        showAlert('فشل في حذف الحساب', 'danger');
+                    }
+                });
+            });
+
+            function showAlert(message, type) {
+                const alert = $(`
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `);
+
+                $('.banking-container').prepend(alert);
+
+                setTimeout(() => {
+                    alert.alert('close');
+                }, 5000);
+            }
+        });
+    </script>
+}

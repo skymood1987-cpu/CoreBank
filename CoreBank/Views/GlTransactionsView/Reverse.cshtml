@@ -1,0 +1,137 @@
+﻿@model MinCoreBank.Models.GlTransaction
+
+@{
+    ViewData["Title"] = "ترجيع القيد";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-undo fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+       
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>تنبيه:</strong> أنت على وشك ترجيع القيد رقم <strong>@Model.TransactionRef</strong>. سيتم إنشاء قيد مرتجع معكوس.
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">رقم المرجع الأصلي:</label>
+                        <p class="form-control-plaintext">@Model.TransactionRef</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">التاريخ:</label>
+                        <p class="form-control-plaintext">@Model.Date?.ToString("yyyy-MM-dd")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب المدين:</label>
+                        <p class="form-control-plaintext">@Model.DebitAccount</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الحساب الدائن:</label>
+                        <p class="form-control-plaintext">@Model.CreditAccount</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">المبلغ:</label>
+                        <p class="form-control-plaintext">@Model.Amount?.ToString("N2")</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">العملة:</label>
+                        <p class="form-control-plaintext">@Model.Currency</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">سعر الصرف:</label>
+                        <p class="form-control-plaintext">@Model.FxRate?.ToString("N4")</p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="reverseForm">
+                <input type="hidden" name="originalTransactionId" value="@Model.Id" />
+
+                <div class="mb-3">
+                    <label for="reverseReason" class="form-label fw-bold">سبب الترجيع <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="reverseReason" name="reverseReason" rows="3" required
+                              placeholder="يرجى كتابة سبب ترجيع القيد..."></textarea>
+                </div>
+
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-undo me-2"></i>تأكيد الترجيع
+                    </button>
+                    <a href="@Url.Action("Details", "GlTransactionsView", new { id = Model.Id })" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#reverseForm').on('submit', function(e) {
+                e.preventDefault();
+
+                if (!confirm('هل أنت متأكد من ترجيع هذا القيد؟ لا يمكن التراجع عن هذه العملية.')) {
+                    return;
+                }
+
+                const formData = {
+                    originalTransactionId: '@Model.Id',
+                    reverseReason: $('#reverseReason').val()
+                };
+
+                $.ajax({
+                    url: '/api/GlTransactions/reverse',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('تم ترجيع القيد بنجاح!');
+                        window.location.href = '/GlTransactionsView/Index';
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr);
+
+                        let errorMessage = 'حدث خطأ أثناء ترجيع القيد. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.status === 400) {
+                            errorMessage = 'بيانات غير صحيحة. يرجى التحقق من المدخلات.';
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            });
+        });
+    </script>
+}

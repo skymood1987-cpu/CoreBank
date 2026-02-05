@@ -1,0 +1,111 @@
+﻿
+@model MinCoreBank.Models.GeneralLedgerAccount
+
+@{
+    ViewData["Title"] = "تعديل الحساب";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-edit fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+       
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <form id="editAccountForm">
+                <input type="hidden" id="AccountId" value="@Model.Id" />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="NameAr" class="form-label">الاسم بالعربية</label>
+                            <input type="text" class="form-control" id="NameAr" value="@Model.NameAr" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="NameEn" class="form-label">الاسم بالإنجليزية</label>
+                            <input type="text" class="form-control" id="NameEn" value="@Model.NameEn">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Status" class="form-label">الحالة</label>
+                            <select class="form-select" id="Status" required>
+                                <option value="active" selected="@(Model.Status == "active")">نشط</option>
+                                <option value="closed" selected="@(Model.Status == "closed")">مغلق</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                      
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>حفظ التغييرات
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Handle form submission
+            $('#editAccountForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const accountId = $('#AccountId').val();
+                const formData = {
+                    nameAr: $('#NameAr').val(),
+                    nameEn: $('#NameEn').val(),
+                    status: $('#Status').val(),
+                    interestRate: parseFloat($('#InterestRate').val()) || 0
+                };
+
+                $.ajax({
+                    url: `/api/GeneralLedger/Updategl/${accountId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function() {
+                        showAlert('تم تحديث الحساب بنجاح', 'success');
+                        setTimeout(() => window.location.href = '@Url.Action("Index")', 1000);
+                    },
+                    error: function() {
+                        showAlert('فشل في تحديث الحساب', 'danger');
+                    }
+                });
+            });
+
+            function showAlert(message, type) {
+                const alert = $(`
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `);
+
+                $('.banking-container').prepend(alert);
+
+                setTimeout(() => {
+                    alert.alert('close');
+                }, 5000);
+            }
+        });
+    </script>
+}

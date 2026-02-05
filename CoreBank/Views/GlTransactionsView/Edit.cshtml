@@ -1,0 +1,151 @@
+﻿@model MinCoreBank.Models.GlTransaction
+
+@{
+    ViewData["Title"] = "تعديل القيد";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-edit fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+    </div>
+
+    <div class="banking-card">
+        <div class="card-body">
+            <form id="editTransactionForm">
+                <input type="hidden" id="Id" name="Id" value="@Model.Id" />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="TransactionRef" class="form-label">رقم المرجع <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="TransactionRef" name="TransactionRef" value="@Model.TransactionRef" required readonly>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="GlName" class="form-label">اسم الحساب العام</label>
+                            <input type="text" class="form-control" id="GlName" name="GlName" value="@Model.GlName">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="GlId" class="form-label">رقم الحساب العام</label>
+                            <input type="number" class="form-control" id="GlId" name="GlId" value="@Model.GlId">
+                        </div>
+                    </div>
+                   
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="DebitAccount" class="form-label">الحساب المدين <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="DebitAccount" name="DebitAccount" value="@Model.DebitAccount">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="CreditAccount" class="form-label">الحساب الدائن <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="CreditAccount" name="CreditAccount" value="@Model.CreditAccount">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="Currency" class="form-label">العملة <span class="text-danger">*</span></label>
+                            <select class="form-select" id="Currency" name="Currency" required>
+                                <option value="">اختر العملة</option>
+                                <option value="IQD" @(Model.Currency == "IQD" ? "selected" : "")>دينار عراقي (IQD)</option>
+                                <option value="USD" @(Model.Currency == "USD" ? "selected" : "")>دولار أمريكي (USD)</option>
+                                <option value="EUR" @(Model.Currency == "EUR" ? "selected" : "")>يورو (EUR)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="DescriptionAr" class="form-label">الوصف بالعربية</label>
+                            <textarea class="form-control" id="DescriptionAr" name="DescriptionAr" rows="2">@Model.DescriptionAr</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>حفظ التعديلات
+                    </button>
+                    <a href="@Url.Action("Index", "GlTransactionsView", new { id = Model.Id })" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+               $(document).ready(function() {
+            // Handle form submission
+            $('#editTransactionForm').on('submit', function(e) {
+                e.preventDefault();
+
+                // FIX: Only send fields that are in GlTransactionUpdateDto
+                const formData = {
+                    id: parseInt($('#Id').val()),  // Convert to number
+                    DebitAccount: parseFloat($('#DebitAccount').val()) || 0,
+                    CreditAccount: parseFloat($('#CreditAccount').val()) || 0,
+                    DescriptionAr: $('#DescriptionAr').val()
+                    // Remove other fields that aren't in UpdateDto
+                };
+
+                // FIX: Validate before sending
+                if (formData.DebitAccount <= 0) {
+                    alert('الحساب المدين يجب أن يكون رقم موجب');
+                    return;
+                }
+
+                if (formData.CreditAccount <= 0) {
+                    alert('الحساب الدائن يجب أن يكون رقم موجب');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/api/GlTransactions/Updatetrans/' + formData.id,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('تم تحديث القيد بنجاح!');
+                        window.location.href = '/GlTransactionsView/Index';
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr);
+
+                        let errorMessage = 'حدث خطأ أثناء تحديث القيد. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            const errors = Object.values(xhr.responseJSON.errors).flat();
+                            errorMessage = 'أخطاء في البيانات:\n' + errors.join('\n');
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            });
+        });
+    </script>
+}

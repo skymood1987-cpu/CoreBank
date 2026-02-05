@@ -1,0 +1,475 @@
+﻿@model MinCoreBank.Models.ViewModels.DailyBranchApprovalViewModel
+@{
+    ViewData["Title"] = "موافقة الفرع اليومية";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="banking-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-check-circle fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-code-branch fa-2x text-primary mb-2"></i>
+                    <h4 class="text-primary">@Model.BranchId</h4>
+                    <p class="text-muted mb-0">الفرع</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-up fa-2x text-success mb-2"></i>
+                    <h4 class="text-success">@Model.TotalCredit.ToString("N2")</h4>
+                    <p class="text-muted mb-0">إجمالي الدائن</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-arrow-down fa-2x text-danger mb-2"></i>
+                    <h4 class="text-danger">@Model.TotalDebit.ToString("N2")</h4>
+                    <p class="text-muted mb-0">إجمالي المدين</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="banking-card summary-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-balance-scale fa-2x @(Model.IsBalanced ? "text-success" : "text-warning") mb-2"></i>
+                    <h4 class="@(Model.IsBalanced ? "text-success" : "text-warning")">@(Model.IsBalanced ? "متوازنة" : "غير متوازنة")</h4>
+                    <p class="text-muted mb-0">حالة الميزانية</p>
+                    @if (!Model.IsBalanced)
+                    {
+                        <small class="text-danger">الفرق: @Model.Difference.ToString("N2")</small>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="banking-card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-calendar-day me-2"></i>حالة الموافقة ليوم @Model.Today.ToString("yyyy-MM-dd")
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Approval Action -->
+            <div class="text-center mt-4">
+                @if (Model.IsApprovedToday)
+                {
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>تمت الموافقة على الفرع اليوم</strong>
+                        <br>
+                        @if (Model.TodayApproval != null)
+                        {
+                            <small>بواسطة: @Model.TodayApproval.ApprovedBy | في: @Model.TodayApproval.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                        }
+                    </div>
+                    <button class="btn btn-success" disabled>
+                        <i class="fas fa-lock me-2"></i>تمت الموافقة والقفل
+                    </button>
+                }
+                else
+                {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>لم تتم الموافقة على الفرع اليوم</strong>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg" onclick="approveBranch()" id="approveButton" @(Model.IsBalanced ? "" : "disabled")>
+                        <i class="fas fa-check-circle me-2"></i>موافقة وقفل الفرع
+                    </button>
+                    @if (!Model.IsBalanced)
+                    {
+                        <div class="mt-2">
+                            <small class="text-danger">لا يمكن الموافقة على الفرع لأن إجمالي الدائن (@Model.TotalCredit.ToString("N2")) لا يساوي إجمالي المدين (@Model.TotalDebit.ToString("N2"))</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-2">
+                            <small class="text-muted">سيتم الموافقة على المعاملات الحالية وقفل الفرع ليوم @Model.Today.ToString("yyyy-MM-dd")</small>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Balance Check -->
+    <div class="banking-card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-balance-scale me-2"></i>فحص الرصيد السريع
+            </h5>
+        </div>
+        <div class="card-body text-center">
+            <button type="button" class="btn btn-outline-info" onclick="checkBalance()">
+                <i class="fas fa-sync-alt me-2"></i>تحديث بيانات الرصيد
+            </button>
+            <div id="balanceResult" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+    <!-- Quick Balance Check --
+
+<!-- Notes Modal -->
+<div class="modal fade" id="notesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إضافة ملاحظات للموافقة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="approvalNotes" class="form-control" rows="4" placeholder="أدخل أي ملاحظات إضافية (اختياري)..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="confirmApproval()">تأكيد الموافقة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .banking-container {
+            padding: 20px;
+        }
+
+        .page-title {
+            color: #1a3a6c;
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+
+        .banking-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+        }
+
+            /* Card Header - EXACT SAME as Index page */
+            .banking-card .card-header {
+                background-color: #f8f9fa;
+                border-bottom: 2px solid #e9ecef;
+                padding: 1rem 1.5rem;
+                font-weight: 600;
+                border-radius: 10px 10px 0 0 !important;
+            }
+
+                .banking-card .card-header h5 {
+                    margin: 0;
+                    font-weight: 600;
+                    color: #1a3a6c;
+                }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* Summary Cards - EXACT SAME as Index page */
+        .summary-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #1a3a6c;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+            .summary-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+            .summary-card .card-body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                width: 100%;
+                padding: 1.5rem 1rem;
+            }
+
+            /* Center the icon - EXACT SAME SIZE as Index */
+            .summary-card .fa-2x {
+                display: block;
+                margin: 0 auto 0.75rem auto;
+                font-size: 2em !important;
+            }
+
+            /* Center the amount - EXACT SAME SIZE as Index */
+            .summary-card h4 {
+                text-align: center;
+                margin: 0.5rem 0;
+                width: 100%;
+                font-size: 1.5rem !important;
+                font-weight: 400;
+            }
+
+            /* Center the label - EXACT SAME SIZE as Index */
+            .summary-card p {
+                text-align: center;
+                margin: 0;
+                width: 100%;
+                font-size: 1rem !important;
+                color: #6c757d !important;
+            }
+
+        .bg-light {
+            background-color: #f8f9fa !important;
+        }
+
+        .border.rounded {
+            border: 1px solid #dee2e6 !important;
+        }
+
+        .btn-lg {
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+            padding: 15px 20px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .text-muted {
+            color: #6c757d !important;
+        }
+
+        .text-primary {
+            color: #1a3a6c !important;
+        }
+
+        .text-success {
+            color: #198754 !important;
+        }
+
+        .text-danger {
+            color: #dc3545 !important;
+        }
+
+        .text-warning {
+            color: #ffc107 !important;
+        }
+
+        .btn-success:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            opacity: 1;
+        }
+
+        .modal-header {
+            background: #1a3a6c;
+            color: white;
+        }
+
+        .modal-title {
+            font-weight: 600;
+        }
+
+        .btn-close {
+            filter: invert(1);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Print styles */
+        @@media print {
+            .btn, .modal-footer, .alert, .summary-card {
+                display: none !important;
+            }
+
+            .modal-dialog {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+
+            .modal-content {
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            .banking-card {
+                box-shadow: none !important;
+                border: 1px solid #000 !important;
+            }
+        }
+    </style>
+}
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function approveBranch() {
+            $('#notesModal').modal('show');
+        }
+
+        function confirmApproval() {
+            const notes = $('#approvalNotes').val();
+            showLoading('جاري الموافقة على الفرع...');
+
+            fetch('/DailyBranchApprovals/ApproveToday', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ notes: notes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                $('#notesModal').modal('hide');
+
+                if (data.success) {
+                    showSuccess(data.message);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showError(data.message);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                showError('حدث خطأ أثناء الموافقة على الفرع');
+            });
+        }
+
+        function checkBalance() {
+            showLoading('جاري فحص الرصيد...');
+
+            // In a real application, you would make an AJAX call here
+            // For now, we'll simulate with a timeout
+            setTimeout(() => {
+                hideLoading();
+                const balanceResult = document.getElementById('balanceResult');
+                const isBalanced = @Model.IsBalanced.ToString().ToLower();
+                const statusText = isBalanced ? "متوازنة" : "غير متوازنة";
+                const statusClass = isBalanced ? "text-success" : "text-danger";
+
+                let differenceHtml = '';
+                @if (!Model.IsBalanced)
+                {
+                        <text>differenceHtml = '<br>الفرق: <strong class="text-danger">@Model.Difference.ToString("N2")</strong>';</text>
+                }
+
+                balanceResult.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>بيانات الرصيد المحدثة:</strong><br>
+                        إجمالي الدائن: <strong>@Model.TotalCredit.ToString("N2")</strong> |
+                        إجمالي المدين: <strong>@Model.TotalDebit.ToString("N2")</strong> |
+                        الحالة: <strong class="${statusClass}">${statusText}</strong>
+                        ${differenceHtml}
+                    </div>
+                `;
+
+                // Update the approve button state
+                const approveButton = document.getElementById('approveButton');
+                if (approveButton) {
+                    if (@Model.IsBalanced.ToString().ToLower()) {
+                        approveButton.disabled = false;
+                    } else {
+                        approveButton.disabled = true;
+                    }
+                }
+            }, 1000);
+        }
+
+        function showLoading(message = 'جاري المعالجة...') {
+            $('body').append(`
+                <div class="loading-overlay">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                    <div class="mt-3 text-primary fw-bold">${message}</div>
+                </div>
+            `);
+        }
+
+        function hideLoading() {
+            $('.loading-overlay').remove();
+        }
+
+        function showSuccess(message) {
+            Swal.fire({
+                icon: 'success',
+                title: 'نجح',
+                text: message,
+                confirmButtonText: 'موافق',
+                confirmButtonColor: '#1a3a6c'
+            });
+        }
+
+        function showError(message) {
+            Swal.fire({
+                icon: 'error',
+                title: 'خطأ',
+                text: message,
+                confirmButtonText: 'موافق',
+                confirmButtonColor: '#dc3545'
+            });
+        }
+
+        $('#notesModal').on('shown.bs.modal', function () {
+            $('#approvalNotes').focus();
+        });
+
+        $('#notesModal').on('hidden.bs.modal', function () {
+            $('#approvalNotes').val('');
+        });
+
+        // Initialize button state
+        $(document).ready(function() {
+            const approveButton = document.getElementById('approveButton');
+            if (approveButton && !@Model.IsBalanced.ToString().ToLower()) {
+                approveButton.disabled = true;
+            }
+        });
+    </script>
+}
