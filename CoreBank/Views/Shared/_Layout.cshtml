@@ -1,144 +1,57 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - MinCore_Bank_system</title>
-
-    <!-- Bootstrap CSS RTL -->
+    <title>@ViewData["Title"] - MinCoreBank</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Custom CSS for RTL -->
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: right;
-            direction: rtl;
-        }
-
-        .navbar-brand {
-            font-weight: bold;
-            color: #1a3a6c !important;
-        }
-
-        .main-container {
-            min-height: calc(100vh - 120px);
-            padding: 20px 0;
-        }
-
-        .footer {
-            background-color: #1a3a6c;
-            color: white;
-            padding: 15px 0;
-            margin-top: auto;
-        }
+        :root { --primary:#1a3a6c; --secondary:#2c5282; --bg:#f3f6fb; --card:#ffffff; --border:#dbe3f0; }
+        body { margin:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:var(--bg); direction:rtl; color:#1e2a3a; }
+        .app-shell { display:flex; min-height:100vh; }
+        .app-sidebar { width:270px; background:linear-gradient(180deg,var(--primary),#123057); color:#fff; position:fixed; left:0; top:0; bottom:0; padding:20px 14px; box-shadow:0 0 24px rgba(10,26,51,.25); }
+        .brand { font-weight:700; font-size:1.25rem; margin-bottom:24px; display:block; color:#fff; text-decoration:none; text-align:center; }
+        .sidebar-link { display:flex; align-items:center; gap:10px; color:#d7e7ff; text-decoration:none; padding:10px 12px; border-radius:10px; margin-bottom:6px; }
+        .sidebar-link:hover,.sidebar-link.active { background:rgba(255,255,255,.15); color:#fff; }
+        .sidebar-foot { position:absolute; bottom:20px; left:14px; right:14px; }
+        .content-wrap { margin-left:270px; width:calc(100% - 270px); padding:28px; }
+        .page-title { color:var(--primary); font-weight:700; margin-bottom:0; }
+        .banking-container { max-width: 1300px; margin:0 auto; }
+        .banking-card { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 8px 24px rgba(26,58,108,.08); overflow:hidden; }
+        .banking-card .card-header { background:#f8fbff; border-bottom:1px solid var(--border); padding:14px 18px; }
+        .banking-card .card-body { padding:18px; }
+        .btn-primary { background:linear-gradient(90deg,var(--primary),var(--secondary)); border:none; }
+        .banking-table thead th { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .banking-table tbody tr:hover { background:#f4f8ff; }
+        @@media (max-width: 991px){ .app-sidebar{transform:translateX(-100%); position:fixed;} .content-wrap{margin-left:0;width:100%;padding:16px;} }
     </style>
-
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header class="rtl-header">
-        <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(to right, #1a3a6c, #2c5282);">
-            <div class="container">
-                <a class="navbar-brand" href="@Url.Action("Index", "GlTransactionsView")" style="color: white !important;">
-                    <i class="fas fa-university ms-2"></i> MinCoreBank
-                </a>
-
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "GlTransactionsView" ? "active" : "")"
-                               href="@Url.Action("Index", "GlTransactionsView")">
-                                <i class="fas fa-home ms-1"></i> الرئيسية
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "GlTreeReportView" ? "active" : "")"
-                               href="@Url.Action("Index", "GlTreeReportView")">
-                                <i class="fas fa-sitemap ms-1"></i> تقارير الاستاذ العام
-                            </a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "DailyBranchApprovalView" ? "active" : "")"
-                               href="@Url.Action("Index", "DailyBranchApprovalView")">
-                                <i class="fas fa-sitemap ms-1"></i> اجراءات نهاية اليوم  
-                            </a>
-                        </li>
-                        @if (User.IsInRole("admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "GeneralLedgerView" ? "active" : "")"
-                                   href="@Url.Action("Index", "GeneralLedgerView")">
-                                    <i class="fas fa-book ms-1"></i> ادارة الاستاذ العام
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "UsersView" ? "active" : "")"
-                                   href="@Url.Action("Index", "UsersView")">
-                                    <i class="fas fa-users ms-1"></i> ادارة المستخدمين
-                                </a>
-                            </li>
-
-                            
-                        }
-                    </ul>
-
-                    <!-- User info and logout section -->
-                    <ul class="navbar-nav ms-auto">
-                        @if (User.Identity.IsAuthenticated)
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-user-circle me-1"></i>@User.Identity.Name
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Logout", "AuthView")">
-                                            <i class="fas fa-sign-out-alt me-1"></i>تسجيل الخروج
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" href="@Url.Action("Login", "AuthView")">
-                                    <i class="fas fa-sign-in-alt me-1"></i>تسجيل الدخول
-                                </a>
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
-
-    <main class="main-container">
-        <div class="container">
-            @RenderBody()
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <a class="brand" href="@Url.Action("Index","Home")"><i class="fa-solid fa-building-columns"></i> MinCoreBank</a>
+        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="Home" ? "active" : "")" href="@Url.Action("Index","Home")"><i class="fa-solid fa-house"></i> الرئيسية</a>
+        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GlTransactionsView" ? "active" : "")" href="@Url.Action("Index","GlTransactionsView")"><i class="fa-solid fa-arrows-rotate"></i> قيود الاستاذ العام</a>
+        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GlTreeReportView" ? "active" : "")" href="@Url.Action("Index","GlTreeReportView")"><i class="fa-solid fa-chart-line"></i> تقارير الاستاذ العام</a>
+        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="DailyBranchApprovalView" ? "active" : "")" href="@Url.Action("Index","DailyBranchApprovalView")"><i class="fa-solid fa-calendar-check"></i> اجراءات نهاية اليوم</a>
+        @if (User.IsInRole("admin"))
+        {
+            <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GeneralLedgerView" ? "active" : "")" href="@Url.Action("Index","GeneralLedgerView")"><i class="fa-solid fa-book"></i> ادارة الاستاذ العام</a>
+            <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="UsersView" ? "active" : "")" href="@Url.Action("Index","UsersView")"><i class="fa-solid fa-users"></i> ادارة المستخدمين</a>
+        }
+        <div class="sidebar-foot">
+            <div class="small mb-2">@User.Identity?.Name</div>
+            <a class="sidebar-link" href="@Url.Action("Logout","AuthView")"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</a>
         </div>
+    </aside>
+    <main class="content-wrap">
+        @RenderBody()
     </main>
-
-    <footer class="footer">
-        <div class="container text-center">
-            <p>  نظام إدارة  الاستاذ العام- 2025_&copy; Min Core Bank   </p>
-        </div>
-    </footer>
-
-    <!-- Bootstrap & jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    @await RenderSectionAsync("Scripts", required: false)
+</div>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

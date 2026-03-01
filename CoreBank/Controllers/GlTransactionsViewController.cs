@@ -1,10 +1,7 @@
-﻿// Controllers/GlTransactionsViewController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MinCoreBank.Models;
 using MinCoreBank.Repositories;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace MinCoreBank.Controllers
 {
@@ -13,8 +10,7 @@ namespace MinCoreBank.Controllers
     {
         private readonly IGlTransactionRepository _repository;
         private readonly IGeneralLedgerRepository _glRepository;
-
-        private const int PageSize = 10; // 10 rows per page
+        private const int PageSize = 10;
 
         public GlTransactionsViewController(IGlTransactionRepository repository, IGeneralLedgerRepository glRepository)
         {
@@ -22,107 +18,124 @@ namespace MinCoreBank.Controllers
             _glRepository = glRepository;
         }
 
-        public async Task<IActionResult> Index(int page = 1, string branchId = null, string startDate = null, string endDate = null)
+        public async Task<IActionResult> Index(int page = 1, string branchId = null, string period = "today", string from = null, string to = null)
         {
-            // Get the user's branch code from claims
             var userBranchCode = User.FindFirst("BranchCode")?.Value;
-
-            // If no branchId filter is provided, default to the user's branch
             if (string.IsNullOrEmpty(branchId) && !string.IsNullOrEmpty(userBranchCode))
             {
                 branchId = userBranchCode;
             }
 
-            // Get all transactions
-            var allTransactions = await _repository.GetAllAsync();
-            var transactionsList = allTransactions.ToList();
+            var transactionsList = (await _repository.GetAllAsync()).ToList();
 
-            // Apply filters if provided
             if (!string.IsNullOrEmpty(branchId) && branchId != "all")
             {
                 transactionsList = transactionsList.Where(t => t.BranchId == branchId).ToList();
             }
 
-            if (!string.IsNullOrEmpty(startDate) && System.DateTime.TryParse(startDate, out var startDateParsed))
+            var today = DateTime.Today;
+            DateTime startDate;
+            DateTime endDate;
+            switch ((period ?? "today").ToLower())
             {
-                transactionsList = transactionsList.Where(t => t.Date >= startDateParsed).ToList();
+                case "week":
+                    var diff = (7 + (today.DayOfWeek - DayOfWeek.Saturday)) % 7;
+                    startDate = today.AddDays(-diff);
+                    endDate = startDate.AddDays(6);
+                    break;
+                case "month":
+                    startDate = new DateTime(today.Year, today.Month, 1);
+                    endDate = startDate.AddMonths(1).AddDays(-1);
+                    break;
+                case "custom":
+                    if (!DateTime.TryParse(from, out startDate) || !DateTime.TryParse(to, out endDate))
+                    {
+                        startDate = today;
+                        endDate = today;
+                        period = "today";
+                    }
+                    break;
+                default:
+                    period = "today";
+                    startDate = today;
+                    endDate = today;
+                    break;
             }
 
-            if (!string.IsNullOrEmpty(endDate) && System.DateTime.TryParse(endDate, out var endDateParsed))
-            {
-                transactionsList = transactionsList.Where(t => t.Date <= endDateParsed).ToList();
-            }
-
-            // Get GL accounts for dropdown
-            var glAccounts = await _glRepository.GetAllAsync();
-            ViewBag.GlAccounts = glAccounts;
-
-            // Calculate pagination
-            var totalCount = transactionsList.Count;
-            var totalPages = (int)System.Math.Ceiling(totalCount / (double)PageSize);
-
-            // Ensure page is within valid range
-            page = page < 1 ? 1 : page > totalPages ? totalPages : page;
-
-            // Get transactions for current page
-            var pagedTransactions = transactionsList
-                .Skip((page - 1) * PageSize)
-                .Take(PageSize)
+            transactionsList = transactionsList
+                .Where(t => t.Date.HasValue && t.Date.Value.Date >= startDate.Date && t.Date.Value.Date <= endDate.Date)
+                .OrderByDescending(t => t.CreatedAt)
                 .ToList();
 
-            // Pass data to view
+            var totalCredit = transactionsList.Sum(t => t.CreditAccount ?? 0m);
+            var totalDebit = transactionsList.Sum(t => t.DebitAccount ?? 0m);
+            var balanced = Math.Abs(totalCredit - totalDebit) <= 0.001m;
+
+            var totalCount = transactionsList.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
+            page = Math.Max(1, Math.Min(page, totalPages));
+
+            var pagedTransactions = transactionsList.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+
+            ViewBag.GlAccounts = await _glRepository.GetAllAsync();
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = totalPages;
             ViewBag.TotalCount = totalCount;
             ViewBag.PageSize = PageSize;
             ViewBag.BranchId = branchId;
-            ViewBag.StartDate = startDate;
-            ViewBag.EndDate = endDate;
-            ViewBag.UserBranchCode = userBranchCode; // Pass user's branch code to the view
+            ViewBag.UserBranchCode = userBranchCode;
 
-            return View(pagedTransactions);
+            var vm = new GlTransactionsIndexViewModel
+            {
+                Transactions = pagedTransactions,
+                Period = period ?? "today",
+                From = startDate,
+                To = endDate,
+                TotalCredit = totalCredit,
+                TotalDebit = totalDebit,
+                BalanceStatus = balanced ? "متوازنة" : "غير متوازنة"
+            };
+
+            return View(vm);
+        }
+
+        [HttpGet("api/gltransactionsview/account/{id:int}")]
+        public async Task<IActionResult> LookupAccount(int id)
+        {
+            var account = await _glRepository.GetByIdAsync(id);
+            if (account == null)
+            {
+                return NotFound(new { message = "رقم الأستاذ العام غير موجود" });
+            }
+
+            return Ok(new { id = account.Id, nameAr = account.NameAr });
         }
 
         public async Task<IActionResult> Create()
         {
-            // Fetch GL accounts for dropdown
-            var glAccounts = await _glRepository.GetAllAsync();
-            ViewBag.GlAccounts = glAccounts;
+            ViewBag.GlAccounts = await _glRepository.GetAllAsync();
             return View();
         }
 
         public async Task<IActionResult> Details(long id)
         {
             var transaction = await _repository.GetByIdAsync(id);
-            if (transaction == null)
-            {
-                return NotFound();
-            }
+            if (transaction == null) return NotFound();
             return View(transaction);
         }
 
         public async Task<IActionResult> Edit(long id)
         {
             var transaction = await _repository.GetByIdAsync(id);
-            if (transaction == null)
-            {
-                return NotFound();
-            }
-
-            // Fetch GL accounts for dropdown in edit mode too
-            var glAccounts = await _glRepository.GetAllAsync();
-            ViewBag.GlAccounts = glAccounts;
-
+            if (transaction == null) return NotFound();
+            ViewBag.GlAccounts = await _glRepository.GetAllAsync();
             return View(transaction);
         }
 
         public async Task<IActionResult> Reverse(long id)
         {
             var transaction = await _repository.GetByIdAsync(id);
-            if (transaction == null)
-            {
-                return NotFound();
-            }
+            if (transaction == null) return NotFound();
             return View(transaction);
         }
     }

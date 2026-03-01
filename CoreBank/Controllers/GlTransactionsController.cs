@@ -94,10 +94,9 @@ namespace MinCoreBank.Controllers
                 if (dto.Amount == null || dto.Amount < 0)
                     return BadRequest("Amount must be a positive number");
 
-                // Auto-calculate IQD amount
-                decimal? amountIqd = dto.Currency?.Equals("IQD", StringComparison.OrdinalIgnoreCase) == true
-                    ? dto.Amount
-                    : dto.Amount * dto.FxRate;
+                dto.Currency = "IQD";
+                dto.FxRate = 1.0m;
+                decimal? amountIqd = dto.Amount;
 
                 // Generate temporary reference
                 dto.GenerateTempReference();
@@ -114,8 +113,8 @@ namespace MinCoreBank.Controllers
                     CreditAccount = dto.CreditAccount,
                     Amount = dto.Amount,
                     AmountIqd = amountIqd,
-                    Currency = dto.Currency?.ToUpper() ?? "IQD",
-                    FxRate = dto.Currency?.Equals("IQD", StringComparison.OrdinalIgnoreCase) == true ? 1.0m : dto.FxRate,
+                    Currency = "IQD",
+                    FxRate = 1.0m,
                     CbiCode = dto.CbiCode ?? string.Empty,
                     DescriptionAr = dto.DescriptionAr ?? string.Empty,
                     DescriptionEn = dto.DescriptionEn ?? string.Empty,

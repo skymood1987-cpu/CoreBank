@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MinCoreBank.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         public IActionResult Index()
