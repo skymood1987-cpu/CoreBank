@@ -5,56 +5,37 @@
 
 <div class="banking-container">
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
+        <div class="col-12 logout-card-wrap">
             <div class="banking-card">
                 <div class="card-header text-center">
                     <h4 class="mb-0">
-                        <i class="fas fa-sign-out-alt me-2"></i>تسجيل الخروج
+                        <i class="fas fa-right-from-bracket me-2"></i>تسجيل الخروج
                     </h4>
                 </div>
 
-                <div class="card-body text-center py-5">
-                    <!-- Animated Icon -->
-                    <div class="logout-icon mb-4">
-                        <div class="icon-circle">
-                            <i class="fas fa-user-check fa-3x text-primary"></i>
-                        </div>
-                    </div>
-
-                    <!-- Confirmation Message -->
-                    <h3 class="text-dark mb-3">هل أنت متأكد من تسجيل الخروج؟</h3>
+                <div class="card-body text-center py-4">
+                    <h5 class="mb-3">هل أنت متأكد من تسجيل الخروج؟</h5>
                     <p class="text-muted mb-4">
-                        سيتم إنهاء جلسة العمل الحالية وسوف تحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى النظام.
+                        سيتم إنهاء الجلسة الحالية، وستحتاج إلى تسجيل الدخول مرة أخرى.
                     </p>
 
-                    <!-- User Info -->
-                    <div class="user-info mb-4 p-3 bg-light rounded">
-                        <i class="fas fa-user-circle me-2 text-primary"></i>
+                    <div class="user-info mb-4">
+                        <i class="fas fa-user-circle me-2"></i>
                         <span class="fw-bold">المستخدم:</span>
-                        <span class="text-dark">@User.Identity.Name</span>
+                        <span>@User.Identity?.Name</span>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="d-flex gap-3 justify-content-center">
-                        <!-- Use a simple form that actually works -->
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
                         <form action="/AuthView/LogoutConfirmed" method="post" id="logoutForm">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-danger btn-lg px-4" id="logoutBtn">
-                                <i class="fas fa-sign-out-alt me-2"></i>نعم، سجل الخروج
+                            <button type="submit" class="btn btn-primary" id="logoutBtn">
+                                <i class="fas fa-right-from-bracket me-1"></i>تأكيد تسجيل الخروج
                             </button>
                         </form>
 
-                        <a href="@Url.Action("Index", "GlTransactionsView")" class="btn btn-outline-secondary btn-lg px-4">
-                            <i class="fas fa-arrow-right me-2"></i>البقاء في النظام
+                        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-right me-1"></i>إلغاء
                         </a>
-                    </div>
-
-                    <!-- Security Notice -->
-                    <div class="security-notice mt-4 p-3 bg-warning bg-opacity-10 rounded">
-                        <i class="fas fa-shield-alt me-2 text-warning"></i>
-                        <small class="text-muted">
-                            لأسباب أمنية، ننصح بتسجيل الخروج خاصة عند استخدام أجهزة مشتركة.
-                        </small>
                     </div>
                 </div>
             </div>
@@ -64,94 +45,46 @@
 
 @section Styles {
     <style>
-        .logout-icon {
-            animation: bounce 2s infinite;
+        .banking-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+            min-height: 520px;
         }
 
-        .icon-circle {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-            border-radius: 50%;
+        .logout-card-wrap {
+            width: min(100%, 1320px);
+            max-width: 1320px;
+        }
+
+        .banking-container {
+            min-height: calc(100vh - 180px);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto;
-            border: 3px solid #1a3a6c;
+        }
+
+        .banking-card .card-header {
+            background: #f8fbff;
+            border-bottom: 1px solid var(--line);
+            padding: 26px 32px;
+        }
+
+        .banking-card .card-body {
+            padding: 64px 56px !important;
         }
 
         .user-info {
-            border-right: 4px solid #1a3a6c;
-        }
-
-        .security-notice {
-            border-right: 3px solid #ffc107;
-        }
-
-        #logoutBtn {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-            #logoutBtn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
-            }
-
-        .btn-outline-secondary {
-            border-color: #6c757d;
-            color: #6c757d;
-            transition: all 0.3s ease;
-        }
-
-            .btn-outline-secondary:hover {
-                background-color: #6c757d;
-                color: white;
-                transform: translateY(-2px);
-            }
-
-        @@keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-
-            40% {
-                transform: translateY(-10px);
-            }
-
-            60% {
-                transform: translateY(-5px);
-            }
-        }
-
-        .fa-shield-alt {
-            animation: pulse 2s infinite;
-        }
-
-        @@keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.1);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        @@media (max-width: 768px) {
-            .d-flex.gap-3 {
-                flex-direction: column;
-                gap: 10px !important;
-            }
-
-            .btn-lg {
-                width: 100%;
-            }
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #f8fbff;
+            color: var(--ink);
+            font-weight: 600;
         }
     </style>
 }
@@ -161,34 +94,10 @@
         $(document).ready(function() {
             $('#logoutBtn').on('click', function(e) {
                 e.preventDefault();
-
                 const btn = $(this);
-                const originalText = btn.html();
-
-                // Show loading state
-                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>جاري تسجيل الخروج...');
-                btn.prop('disabled', true);
-
-                // Create and submit a form programmatically
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/AuthView/LogoutConfirmed';
-
-                // Add anti-forgery token
-                const token = document.createElement('input');
-                token.type = 'hidden';
-                token.name = '__RequestVerificationToken';
-                token.value = $('input[name="__RequestVerificationToken"]').val();
-                form.appendChild(token);
-
-                document.body.appendChild(form);
-                form.submit();
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>جاري تسجيل الخروج...');
+                $('#logoutForm')[0].submit();
             });
-
-            // Page load animation
-            $('.banking-card').hide().fadeIn(800);
-            $('.logout-icon').hide().slideDown(1000);
         });
     </script>
-}
 }

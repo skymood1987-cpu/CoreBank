@@ -94,9 +94,10 @@ namespace MinCoreBank.Controllers
                 if (dto.Amount == null || dto.Amount < 0)
                     return BadRequest("Amount must be a positive number");
 
-                dto.Currency = "IQD";
-                dto.FxRate = 1.0m;
-                decimal? amountIqd = dto.Amount;
+                // Auto-calculate IQD amount
+                decimal? amountIqd = dto.Currency?.Equals("IQD", StringComparison.OrdinalIgnoreCase) == true
+                    ? dto.Amount
+                    : dto.Amount * dto.FxRate;
 
                 // Generate temporary reference
                 dto.GenerateTempReference();
@@ -113,8 +114,8 @@ namespace MinCoreBank.Controllers
                     CreditAccount = dto.CreditAccount,
                     Amount = dto.Amount,
                     AmountIqd = amountIqd,
-                    Currency = "IQD",
-                    FxRate = 1.0m,
+                    Currency = dto.Currency?.ToUpper() ?? "IQD",
+                    FxRate = dto.Currency?.Equals("IQD", StringComparison.OrdinalIgnoreCase) == true ? 1.0m : dto.FxRate,
                     CbiCode = dto.CbiCode ?? string.Empty,
                     DescriptionAr = dto.DescriptionAr ?? string.Empty,
                     DescriptionEn = dto.DescriptionEn ?? string.Empty,
@@ -193,20 +194,19 @@ namespace MinCoreBank.Controllers
                 existing.CreditAccount = dto.CreditAccount.Value;
             }
 
-            if (dto.Amount != null && dto.Amount > 0)
+            if (dto.Amount != null && dto.Amount >= 0)
             {
                 existing.Amount = dto.Amount.Value;
             }
 
-            // Keep your existing validation
-            if (dto.DebitAccount == null || dto.DebitAccount <= 0)
+            if (dto.DebitAccount == null || dto.DebitAccount < 0)
             {
-                return BadRequest("DebitAccount must be a positive number");
+                return BadRequest("DebitAccount must be zero or a positive number");
             }
 
-            if (dto.CreditAccount == null || dto.CreditAccount <= 0)
+            if (dto.CreditAccount == null || dto.CreditAccount < 0)
             {
-                return BadRequest("CreditAccount must be a positive number");
+                return BadRequest("CreditAccount must be zero or a positive number");
             }
 
             var userId = User.Identity.Name;

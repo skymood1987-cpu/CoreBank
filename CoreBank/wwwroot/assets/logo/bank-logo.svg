@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">شعار المصرف الزراعي التعاوني</title>
+  <desc id="desc">شعار دائري للمصرف الزراعي التعاوني باللون الأخضر مع نص عربي وإنجليزي وسنة 1935</desc>
+  <defs>
+    <path id="topArc" d="M 92 256 A 164 164 0 0 1 420 256" />
+    <path id="bottomArc" d="M 110 306 A 150 150 0 0 0 402 306" />
+  </defs>
+
+  <circle cx="256" cy="256" r="226" fill="#2f5d4f" />
+  <circle cx="256" cy="256" r="224" fill="none" stroke="#2f5d4f" stroke-width="4" />
+
+  <g fill="#ffffff" font-family="'Segoe UI', Tahoma, Arial, sans-serif" text-anchor="middle">
+    <text font-size="34" font-weight="700" letter-spacing="0.5">
+      <textPath href="#topArc" startOffset="50%">المصرف الزراعي التعاوني</textPath>
+    </text>
+    <text font-size="24" font-weight="700" letter-spacing="1">
+      <textPath href="#bottomArc" startOffset="50%">Cooperative Agricultural Bank</textPath>
+    </text>
+    <text x="82" y="255" font-size="28" font-weight="700">1935</text>
+    <text x="430" y="255" font-size="28" font-weight="700">١٩٣٥</text>
+  </g>
+
+  <g transform="translate(256 265)" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke-width="6">
+      <polygon points="0,-128 84,-84 128,0 84,84 0,128 -84,84 -128,0 -84,-84" />
+      <rect x="-70" y="-70" width="140" height="140" rx="3" />
+      <polygon points="0,-106 16,-86 -16,-86" />
+      <polygon points="106,0 86,16 86,-16" />
+      <polygon points="0,106 16,86 -16,86" />
+      <polygon points="-106,0 -86,16 -86,-16" />
+    </g>
+
+    <g stroke-width="5">
+      <path d="M 0 70 C 0 18 0 -18 0 -70" />
+      <path d="M 0 64 C -10 18 -26 -24 -46 -66" />
+      <path d="M 0 64 C 10 18 26 -24 46 -66" />
+      <path d="M 0 34 C -16 18 -34 8 -54 0" />
+      <path d="M 0 34 C 16 18 34 8 54 0" />
+      <path d="M 0 6 C -18 -4 -38 -10 -58 -14" />
+      <path d="M 0 6 C 18 -4 38 -10 58 -14" />
+      <path d="M 0 -22 C -18 -28 -36 -32 -52 -34" />
+      <path d="M 0 -22 C 18 -28 36 -32 52 -34" />
+      <path d="M 0 -48 C -14 -52 -28 -54 -40 -54" />
+      <path d="M 0 -48 C 14 -52 28 -54 40 -54" />
+    </g>
+  </g>
+</svg>

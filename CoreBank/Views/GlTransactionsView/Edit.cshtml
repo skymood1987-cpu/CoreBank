@@ -1,148 +1,341 @@
-﻿@model MinCoreBank.Models.GlTransaction
+@model MinCoreBank.Models.GlTransaction
 
 @{
     ViewData["Title"] = "تعديل القيد";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="banking-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-title">
-            <i class="fas fa-edit fa-lg me-2"></i>@ViewData["Title"]
-        </h1>
-    </div>
-
-    <div class="banking-card">
-        <div class="card-body">
-            <form id="editTransactionForm">
-                <input type="hidden" id="Id" name="Id" value="@Model.Id" />
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="TransactionRef" class="form-label">رقم المرجع <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="TransactionRef" name="TransactionRef" value="@Model.TransactionRef" required readonly>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="GlName" class="form-label">اسم الحساب العام</label>
-                            <input type="text" class="form-control" id="GlName" name="GlName" value="@Model.GlName">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="GlId" class="form-label">رقم الحساب العام</label>
-                            <input type="number" class="form-control" id="GlId" name="GlId" value="@Model.GlId">
-                        </div>
-                    </div>
-                   
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="DebitAccount" class="form-label">الحساب المدين <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="DebitAccount" name="DebitAccount" value="@Model.DebitAccount">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="CreditAccount" class="form-label">الحساب الدائن <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="CreditAccount" name="CreditAccount" value="@Model.CreditAccount">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="Currency" class="form-label">العملة <span class="text-danger">*</span></label>
-                            <select class="form-select" id="Currency" name="Currency" required>
-                                <option value="">اختر العملة</option>
-                                <option value="IQD" @(Model.Currency == "IQD" ? "selected" : "")>دينار عراقي (IQD)</option>
-                                <option value="USD" @(Model.Currency == "USD" ? "selected" : "")>دولار أمريكي (USD)</option>
-                                <option value="EUR" @(Model.Currency == "EUR" ? "selected" : "")>يورو (EUR)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="mb-3">
-                            <label for="DescriptionAr" class="form-label">الوصف بالعربية</label>
-                            <textarea class="form-control" id="DescriptionAr" name="DescriptionAr" rows="2">@Model.DescriptionAr</textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group mt-4">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>حفظ التعديلات
-                    </button>
-                    <a href="@Url.Action("Index", "GlTransactionsView", new { id = Model.Id })" class="btn btn-secondary ms-2">
-                        <i class="fas fa-times me-2"></i>إلغاء
-                    </a>
-                </div>
-            </form>
+<div class="transaction-shell">
+    <div class="page-hero">
+        <div>
+            <span class="hero-kicker">إدارة القيود</span>
+            <h1 class="page-title mb-1">تعديل القيد</h1>
+            <p class="page-subtitle mb-0">تحديث بيانات القيد مع السماح بالقيم الصفرية للحركة المدينة أو الدائنة.</p>
         </div>
+       
     </div>
+
+    <div class="edit-grid">
+        <section class="surface-card compact-summary">
+            <div class="summary-label">رقم المرجع</div>
+            <div class="summary-value">@Model.TransactionRef</div>
+            <div class="summary-meta">القيد الحالي الجاهز للتعديل</div>
+        </section>
+
+        <section class="surface-card compact-summary">
+            <div class="summary-label">الحساب العام</div>
+            <div class="summary-value">@(Model.GlId?.ToString() ?? "-")</div>
+            <div class="summary-meta">@(string.IsNullOrWhiteSpace(Model.GlName) ? "غير محدد" : Model.GlName)</div>
+        </section>
+    </div>
+
+    <section class="surface-card form-card">
+        <div class="section-head">
+            <h2>بيانات التعديل</h2>
+            <p>يمكن إدخال قيمة `0` عند الحاجة. يتم رفض القيم السالبة فقط.</p>
+        </div>
+
+        <div id="formMessage" class="form-message" style="display:none;"></div>
+
+        <form id="editTransactionForm" class="transaction-form">
+            <input type="hidden" id="Id" name="Id" value="@Model.Id" />
+
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <label for="TransactionRef" class="form-label">رقم المرجع</label>
+                    <input type="text" class="form-control form-control-lg" id="TransactionRef" value="@Model.TransactionRef" readonly>
+                </div>
+
+                <div class="col-lg-6">
+                    <label for="GlId" class="form-label">رقم الأستاذ العام</label>
+                    <select class="form-select form-select-lg glid-select" id="GlId" name="GlId" required>
+                        <option value="">اختر رقم الأستاذ أو اكتب الرقم</option>
+                        @if (ViewBag.GlAccounts != null)
+                        {
+                            foreach (var account in ViewBag.GlAccounts as IEnumerable<MinCoreBank.Models.GeneralLedgerAccount>)
+                            {
+                                if (account.Id.ToString() == Model.GlId?.ToString())
+                                {
+                                    <option value="@account.Id" data-name-ar="@account.NameAr" selected>@account.Id - @account.NameAr</option>
+                                }
+                                else
+                                {
+                                    <option value="@account.Id" data-name-ar="@account.NameAr">@account.Id - @account.NameAr</option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label for="GlName" class="form-label">اسم الحساب العام</label>
+                    <input type="text" class="form-control form-control-lg" id="GlName" name="GlName" value="@Model.GlName" readonly>
+                </div>
+
+                <div class="col-lg-6">
+                    <label for="DebitAccount" class="form-label">الحساب المدين</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-lg" id="DebitAccount" name="DebitAccount" value="@Model.DebitAccount">
+                    <div class="field-hint">يسمح بالصفر أو أي رقم موجب.</div>
+                </div>
+
+                <div class="col-lg-6">
+                    <label for="CreditAccount" class="form-label">الحساب الدائن</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-lg" id="CreditAccount" name="CreditAccount" value="@Model.CreditAccount">
+                    <div class="field-hint">يسمح بالصفر أو أي رقم موجب.</div>
+                </div>
+
+                <div class="col-lg-6">
+                    <label for="Currency" class="form-label">العملة</label>
+                    <select class="form-select form-select-lg" id="Currency" name="Currency" disabled>
+                        <option value="IQD" @(Model.Currency == "IQD" ? "selected" : "")>دينار عراقي (IQD)</option>
+                        <option value="USD" @(Model.Currency == "USD" ? "selected" : "")>دولار أمريكي (USD)</option>
+                        <option value="EUR" @(Model.Currency == "EUR" ? "selected" : "")>يورو (EUR)</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-6">
+                    <label class="form-label">تاريخ الإنشاء</label>
+                    <input type="text" class="form-control form-control-lg" value="@Model.CreatedAt?.ToString("yyyy-MM-dd HH:mm")" readonly>
+                </div>
+
+                <div class="col-12">
+                    <label for="DescriptionAr" class="form-label">الوصف بالعربية</label>
+                    <textarea class="form-control" id="DescriptionAr" name="DescriptionAr" rows="4" placeholder="أدخل وصف القيد عند الحاجة">@Model.DescriptionAr</textarea>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg" id="saveButton">
+                    <span id="saveText"><i class="fas fa-save me-2"></i>حفظ التعديلات</span>
+                </button>
+                <a href="@Url.Action("Index", "GlTransactionsView")" class="btn btn-light btn-lg">إلغاء</a>
+            </div>
+        </form>
+    </section>
 </div>
 
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .transaction-shell { display: grid; gap: 16px; }
+        .page-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            padding: 16px 18px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: linear-gradient(145deg, #fbfdff 0%, #f3f7fd 100%);
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.06);
+        }
+        .hero-kicker {
+            display: inline-flex;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #eaf2ff;
+            color: #21508d;
+            font-size: .78rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .page-title { color: var(--ink); font-size: 1.7rem; font-weight: 900; }
+        .page-subtitle { color: var(--muted); font-size: .95rem; font-weight: 600; }
+        .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .surface-card {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+        }
+        .compact-summary { padding: 16px 18px; }
+        .summary-label { color: var(--muted); font-size: .82rem; font-weight: 700; margin-bottom: 6px; }
+        .summary-value { color: var(--ink); font-size: 1.18rem; font-weight: 900; }
+        .summary-meta { color: #607594; font-size: .85rem; font-weight: 600; margin-top: 4px; }
+        .form-card { padding: 20px; }
+        .section-head { margin-bottom: 18px; }
+        .section-head h2 { margin: 0 0 6px; color: var(--ink); font-size: 1.2rem; font-weight: 800; }
+        .section-head p { margin: 0; color: var(--muted); font-size: .9rem; font-weight: 600; }
+        .transaction-form .form-label { color: #1a355b; font-weight: 800; margin-bottom: 8px; }
+        .transaction-form .form-control,
+        .transaction-form .form-select {
+            border-radius: 12px;
+            border: 1px solid #d9e4f3;
+            background: #fbfdff;
+            box-shadow: none;
+        }
+        .transaction-form .form-control:focus,
+        .transaction-form .form-select:focus {
+            border-color: #3a629a;
+            box-shadow: 0 0 0 .2rem rgba(18, 60, 120, 0.14);
+            background: #fff;
+        }
+        .transaction-form textarea.form-control { min-height: 132px; resize: vertical; }
+        .field-hint { margin-top: 6px; color: var(--muted); font-size: .8rem; font-weight: 600; }
+        .form-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+        .form-message {
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: .9rem;
+            font-weight: 700;
+            line-height: 1.8;
+        }
+        .form-message.error { background: #fff1f1; color: #b42318; border: 1px solid rgba(180,35,24,.14); }
+        .form-message.success { background: #edf8f1; color: #175c3d; border: 1px solid rgba(23,92,61,.14); }
+        .select2-container { width: 100% !important; }
+        .select2-container--default .select2-selection--single {
+            height: 48px;
+            border: 1px solid #d9e4f3;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            background: #fbfdff;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 46px;
+            padding-right: .9rem;
+            padding-left: 2rem;
+            color: var(--ink);
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 46px;
+            left: 8px;
+            right: auto;
+        }
+        .select2-container--default.select2-container--open .select2-selection--single,
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #3a629a;
+            box-shadow: 0 0 0 .2rem rgba(18, 60, 120, 0.14);
+        }
+        @@media (max-width: 768px) {
+            .edit-grid { grid-template-columns: 1fr; }
+            .form-card { padding: 16px; }
+            .page-hero { padding: 14px; }
+        }
+    </style>
+}
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-               $(document).ready(function() {
-            // Handle form submission
-            $('#editTransactionForm').on('submit', function(e) {
-                e.preventDefault();
+        $(document).ready(function () {
+            const $glId = $('#GlId');
+            const $glName = $('#GlName');
+            const $message = $('#formMessage');
+            const $saveButton = $('#saveButton');
+            const $saveText = $('#saveText');
 
-                // FIX: Only send fields that are in GlTransactionUpdateDto
+            const showMessage = (type, message) => {
+                $message.removeClass('error success').addClass(type).text(message).show();
+            };
+
+            const hideMessage = () => {
+                $message.hide().removeClass('error success').text('');
+            };
+
+            const syncGlName = () => {
+                const selected = $glId.find('option:selected');
+                $glName.val(selected.data('name-ar') || '');
+            };
+
+            $glId.select2({
+                dir: 'rtl',
+                width: '100%',
+                placeholder: 'اختر رقم الأستاذ أو اكتب الرقم',
+                allowClear: true
+            });
+
+            syncGlName();
+
+            $glId.on('change', function () {
+                syncGlName();
+            });
+
+            $(document).on('keydown', '.select2-container--open .select2-search__field', function (e) {
+                if (e.key !== 'Enter') return;
+
+                const typed = ($(this).val() || '').trim();
+                if (!typed) return;
+
+                const $options = $glId.find('option').filter(function () {
+                    return $(this).val() !== '';
+                });
+
+                const $exact = $options.filter(function () {
+                    return String($(this).val()) === typed;
+                }).first();
+
+                if ($exact.length) {
+                    e.preventDefault();
+                    $glId.val($exact.val()).trigger('change').select2('close');
+                    return;
+                }
+
+                const $startsWith = $options.filter(function () {
+                    return String($(this).val()).startsWith(typed);
+                }).first();
+
+                if ($startsWith.length) {
+                    e.preventDefault();
+                    $glId.val($startsWith.val()).trigger('change').select2('close');
+                }
+            });
+
+            $('#editTransactionForm').on('submit', function (e) {
+                e.preventDefault();
+                hideMessage();
+
+                const debitValue = $('#DebitAccount').val();
+                const creditValue = $('#CreditAccount').val();
+
                 const formData = {
-                    id: parseInt($('#Id').val()),  // Convert to number
-                    DebitAccount: parseFloat($('#DebitAccount').val()) || 0,
-                    CreditAccount: parseFloat($('#CreditAccount').val()) || 0,
+                    id: parseInt($('#Id').val(), 10),
+                    DebitAccount: debitValue === '' ? 0 : parseFloat(debitValue),
+                    CreditAccount: creditValue === '' ? 0 : parseFloat(creditValue),
                     DescriptionAr: $('#DescriptionAr').val()
-                    // Remove other fields that aren't in UpdateDto
                 };
 
-                // FIX: Validate before sending
-                if (formData.DebitAccount <= 0) {
-                    alert('الحساب المدين يجب أن يكون رقم موجب');
+                if (Number.isNaN(formData.DebitAccount) || formData.DebitAccount < 0) {
+                    showMessage('error', 'الحساب المدين يجب أن يكون صفراً أو رقماً موجباً.');
                     return;
                 }
 
-                if (formData.CreditAccount <= 0) {
-                    alert('الحساب الدائن يجب أن يكون رقم موجب');
+                if (Number.isNaN(formData.CreditAccount) || formData.CreditAccount < 0) {
+                    showMessage('error', 'الحساب الدائن يجب أن يكون صفراً أو رقماً موجباً.');
                     return;
                 }
+
+                $saveButton.prop('disabled', true);
+                $saveText.html('<span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>جاري الحفظ...');
 
                 $.ajax({
                     url: '/api/GlTransactions/Updatetrans/' + formData.id,
                     type: 'PUT',
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
-                    success: function(response) {
-                        alert('تم تحديث القيد بنجاح!');
-                        window.location.href = '/GlTransactionsView/Index';
+                    success: function () {
+                        showMessage('success', 'تم تحديث القيد بنجاح. يتم تحويلك إلى القائمة...');
+                        setTimeout(function () {
+                            window.location.href = '/GlTransactionsView/Index';
+                        }, 700);
                     },
-                    error: function(xhr) {
-                        console.error('Error details:', xhr);
-
+                    error: function (xhr) {
                         let errorMessage = 'حدث خطأ أثناء تحديث القيد. يرجى المحاولة مرة أخرى.';
 
                         if (xhr.responseJSON && xhr.responseJSON.errors) {
                             const errors = Object.values(xhr.responseJSON.errors).flat();
-                            errorMessage = 'أخطاء في البيانات:\n' + errors.join('\n');
+                            errorMessage = errors.join(' | ');
                         } else if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            errorMessage = xhr.responseText;
                         }
 
-                        alert(errorMessage);
+                        showMessage('error', errorMessage);
+                        $saveButton.prop('disabled', false);
+                        $saveText.html('<i class="fas fa-save me-2"></i>حفظ التعديلات');
                     }
                 });
             });

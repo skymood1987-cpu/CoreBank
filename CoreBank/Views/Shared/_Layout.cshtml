@@ -1,57 +1,434 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - MinCoreBank</title>
+    <title>@ViewData["Title"] - النظام المصرفي</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Cinzel:wght@600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary:#1a3a6c; --secondary:#2c5282; --bg:#f3f6fb; --card:#ffffff; --border:#dbe3f0; }
-        body { margin:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:var(--bg); direction:rtl; color:#1e2a3a; }
-        .app-shell { display:flex; min-height:100vh; }
-        .app-sidebar { width:270px; background:linear-gradient(180deg,var(--primary),#123057); color:#fff; position:fixed; left:0; top:0; bottom:0; padding:20px 14px; box-shadow:0 0 24px rgba(10,26,51,.25); }
-        .brand { font-weight:700; font-size:1.25rem; margin-bottom:24px; display:block; color:#fff; text-decoration:none; text-align:center; }
-        .sidebar-link { display:flex; align-items:center; gap:10px; color:#d7e7ff; text-decoration:none; padding:10px 12px; border-radius:10px; margin-bottom:6px; }
-        .sidebar-link:hover,.sidebar-link.active { background:rgba(255,255,255,.15); color:#fff; }
-        .sidebar-foot { position:absolute; bottom:20px; left:14px; right:14px; }
-        .content-wrap { margin-left:270px; width:calc(100% - 270px); padding:28px; }
-        .page-title { color:var(--primary); font-weight:700; margin-bottom:0; }
-        .banking-container { max-width: 1300px; margin:0 auto; }
-        .banking-card { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 8px 24px rgba(26,58,108,.08); overflow:hidden; }
-        .banking-card .card-header { background:#f8fbff; border-bottom:1px solid var(--border); padding:14px 18px; }
-        .banking-card .card-body { padding:18px; }
-        .btn-primary { background:linear-gradient(90deg,var(--primary),var(--secondary)); border:none; }
-        .banking-table thead th { background:var(--primary); color:#fff; border-color:var(--primary); }
-        .banking-table tbody tr:hover { background:#f4f8ff; }
-        @@media (max-width: 991px){ .app-sidebar{transform:translateX(-100%); position:fixed;} .content-wrap{margin-left:0;width:100%;padding:16px;} }
+        :root {
+            --bg: #eef3fb;
+            --bg-accent: #dce7f7;
+            --sidebar: #081a33;
+            --sidebar-2: #051225;
+            --panel: #ffffff;
+            --panel-soft: #f6f9ff;
+            --line: #d7e2f1;
+            --ink: #0f2342;
+            --muted: #5f7594;
+            --brand: #123c78;
+            --brand-2: #0c2e61;
+            --active: #153c73;
+            --focus: rgba(18, 60, 120, 0.2);
+            --sidebar-width: 238px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 15% 0%, rgba(18, 60, 120, 0.09) 0%, transparent 32%),
+                radial-gradient(circle at 100% 100%, rgba(11, 40, 84, 0.07) 0%, transparent 36%),
+                linear-gradient(180deg, var(--bg) 0%, #f3f7ff 100%);
+            color: var(--ink);
+            font-family: "Cairo", "Tajawal", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            letter-spacing: .1px;
+        }
+
+        .shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+            direction: rtl;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: clip;
+        }
+
+        .shell > * {
+            min-width: 0;
+        }
+
+        .sidebar {
+            background:
+                radial-gradient(circle at 80% 0%, rgba(120, 164, 230, 0.2) 0%, transparent 35%),
+                linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-2) 100%);
+            color: #d8e2f0;
+            padding: 18px 12px;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            border-left: 1px solid #1b2f4f;
+            box-shadow:
+                0 24px 50px rgba(3, 13, 28, 0.35),
+                0 0 0 1px rgba(255, 255, 255, .03) inset;
+            min-width: 0;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #fff;
+            margin-bottom: 16px;
+            font-size: .76rem;
+            font-weight: 800;
+            line-height: 1.25;
+            text-align: center;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex: 0 0 38px;
+            display: inline-flex;
+            place-items: center;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scale(1.03);
+            display: block;
+        }
+        .brand-logo .fallback {
+            width: 100%;
+            height: 100%;
+            display: none;
+            place-items: center;
+            color: #fff;
+            font-size: .95rem;
+        }
+
+        .brand span {
+            display: block;
+            max-width: 205px;
+        }
+
+        .brand-title {
+            font-family: "Cinzel", "Cairo", serif;
+            font-size: .88rem;
+            font-weight: 700;
+            letter-spacing: .9px;
+            line-height: 1.45;
+            color: #f7fbff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+        }
+
+        .menu {
+            display: grid;
+            gap: 5px;
+        }
+
+        .menu.bottom {
+            margin-top: auto;
+            border-top: 1px solid #2a3b58;
+            padding-top: 10px;
+        }
+
+        .app-version {
+            margin-top: 10px;
+            text-align: center;
+            color: #90a5c3;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+
+        .menu-link {
+            text-decoration: none;
+            color: #d8e2f0;
+            border-radius: 9px;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: .84rem;
+            line-height: 1.35;
+        }
+
+        .menu-link:hover {
+            color: #fff;
+            background: rgba(62, 95, 143, 0.45);
+        }
+
+        .menu-link.active {
+            color: #fff;
+            background: var(--active);
+            border: 1px solid #335d97;
+            box-shadow: 0 10px 20px rgba(8, 24, 49, 0.35);
+        }
+
+        .content {
+            padding: 18px;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(18, 60, 120, 0.1) 0%, transparent 34%);
+            min-width: 0;
+            max-width: 100%;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .topbar {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: grid;
+            gap: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+        }
+
+        .header-strip {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            color: #1c3760;
+            font-weight: 700;
+        }
+
+        .header-app-name {
+            font-weight: 800;
+            color: #1b3a66;
+        }
+
+        .header-user-slot {
+            margin-right: auto; /* In RTL this pushes user to the left corner */
+        }
+
+        .header-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f2f7ff;
+            color: #16375f;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: .85rem;
+            font-weight: 700;
+        }
+
+        .header-user {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--panel-soft);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: #17355d;
+            font-weight: 700;
+            width: fit-content;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #26b36a;
+            box-shadow: 0 0 0 3px rgba(38, 179, 106, 0.18);
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px;
+            min-height: calc(100vh - 108px);
+            box-shadow: 0 18px 34px rgba(12, 34, 63, 0.08);
+            min-width: 0;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Unified page title style across all pages */
+        body .shell .content .panel h1.page-title,
+        body .shell .content .panel .page-title {
+            font-family: "Cairo", "Tajawal", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+            font-size: 1.55rem !important;
+            font-weight: 800 !important;
+            color: var(--ink) !important;
+            line-height: 1.35 !important;
+            letter-spacing: .1px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .card, .table, .form-control, .form-select, .btn, .alert, .input-group-text {
+            border-radius: 10px;
+        }
+
+        .card, .table, .form-control, .form-select, .input-group-text {
+            border-color: var(--line);
+        }
+
+        .card {
+            box-shadow: 0 10px 22px rgba(10, 35, 70, 0.06);
+        }
+
+        .table {
+            --bs-table-bg: transparent;
+            --bs-table-striped-bg: #f7faff;
+            --bs-table-hover-bg: #eef4ff;
+        }
+
+        .form-control,
+        .form-select {
+            color: var(--ink);
+            background: #fbfdff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #3a629a;
+            box-shadow: 0 0 0 .2rem var(--focus);
+            background: #fff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--brand), var(--brand-2));
+            border-color: var(--brand);
+            box-shadow: 0 10px 16px rgba(12, 46, 95, 0.25);
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus {
+            background: linear-gradient(90deg, #164989, #0f356f);
+            border-color: #164989;
+        }
+
+        @@media (max-width: 992px) {
+            :root {
+                --sidebar-width: 0px;
+            }
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+                height: auto;
+                border-left: none;
+            }
+
+            .content {
+                padding: 10px;
+            }
+
+            .panel {
+                min-height: auto;
+            }
+        }
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-<div class="app-shell">
-    <aside class="app-sidebar">
-        <a class="brand" href="@Url.Action("Index","Home")"><i class="fa-solid fa-building-columns"></i> MinCoreBank</a>
-        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="Home" ? "active" : "")" href="@Url.Action("Index","Home")"><i class="fa-solid fa-house"></i> الرئيسية</a>
-        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GlTransactionsView" ? "active" : "")" href="@Url.Action("Index","GlTransactionsView")"><i class="fa-solid fa-arrows-rotate"></i> قيود الاستاذ العام</a>
-        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GlTreeReportView" ? "active" : "")" href="@Url.Action("Index","GlTreeReportView")"><i class="fa-solid fa-chart-line"></i> تقارير الاستاذ العام</a>
-        <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="DailyBranchApprovalView" ? "active" : "")" href="@Url.Action("Index","DailyBranchApprovalView")"><i class="fa-solid fa-calendar-check"></i> اجراءات نهاية اليوم</a>
-        @if (User.IsInRole("admin"))
-        {
-            <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="GeneralLedgerView" ? "active" : "")" href="@Url.Action("Index","GeneralLedgerView")"><i class="fa-solid fa-book"></i> ادارة الاستاذ العام</a>
-            <a class="sidebar-link @(ViewContext.RouteData.Values["Controller"]?.ToString()=="UsersView" ? "active" : "")" href="@Url.Action("Index","UsersView")"><i class="fa-solid fa-users"></i> ادارة المستخدمين</a>
-        }
-        <div class="sidebar-foot">
-            <div class="small mb-2">@User.Identity?.Name</div>
-            <a class="sidebar-link" href="@Url.Action("Logout","AuthView")"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</a>
-        </div>
-    </aside>
-    <main class="content-wrap">
-        @RenderBody()
-    </main>
-</div>
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-@await RenderSectionAsync("Scripts", required: false)
+    @{
+        var currentController = ViewContext.RouteData.Values["Controller"]?.ToString() ?? "";
+        var appVersion = Configuration["AppInfo:Version"] ?? "1.0.0";
+    }
+    <div class="shell">
+        <aside class="sidebar">
+            <a class="brand" href="@Url.Action("Index", "Dashboard")">
+                <span class="brand-logo">
+                    <img src="~/assets/logo/bank-logo.jpg" alt="شعار المصرف" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+                    <span class="fallback"><i class="fas fa-building-columns"></i></span>
+                </span>
+                <span class="brand-title">General Ledger Application</span>
+            </a>
+
+            <nav class="menu">
+                <a class="menu-link @((currentController == "Home" || currentController == "Dashboard") ? "active" : "")" href="@Url.Action("Index", "Dashboard")">
+                    <i class="fas fa-house"></i><span>الرئيسية</span>
+                </a>
+                <a class="menu-link @(currentController == "GlTransactionsView" ? "active" : "")" href="@Url.Action("Index", "GlTransactionsView")">
+                    <i class="fas fa-right-left"></i><span>إدارة حسابات الأستاذ العام</span>
+                </a>
+                <a class="menu-link @(currentController == "GlTreeReportView" ? "active" : "")" href="@Url.Action("Index", "GlTreeReportView")">
+                    <i class="fas fa-chart-line"></i><span>تقارير حسابات الأستاذ العام</span>
+                </a>
+                <a class="menu-link @(currentController == "DailyBranchApprovalView" ? "active" : "")" href="@Url.Action("Index", "DailyBranchApprovalView")">
+                    <i class="fas fa-calendar-check"></i><span>إجراءات نهاية اليوم</span>
+                </a>
+             
+                @if (User.IsInRole("admin"))
+                {
+                    <a class="menu-link @(currentController == "GeneralLedgerView" ? "active" : "")" href="@Url.Action("Index", "GeneralLedgerView")">
+                        <i class="fas fa-book"></i><span>إدارة تفاصيل حسابات الأستاذ العام</span>
+                    </a>
+                    <a class="menu-link @(currentController == "UsersView" ? "active" : "")" href="@Url.Action("Index", "UsersView")">
+                        <i class="fas fa-users"></i><span>إدارة المستخدمين النهائيين</span>
+                    </a>
+                }
+            </nav>
+
+            <nav class="menu bottom">
+                <a class="menu-link" href="@Url.Action("ChangePassword", "AuthView")">
+                    <i class="fas fa-key"></i><span>تغيير كلمة المرور</span>
+                </a>
+                <a class="menu-link" href="@Url.Action("Logout", "AuthView")">
+                    <i class="fas fa-right-from-bracket"></i><span>تسجيل الخروج</span>
+                </a>
+            </nav>
+            <div class="app-version">الإصدار @appVersion</div>
+        </aside>
+
+        <main class="content">
+            <header class="topbar">
+                <div class="header-strip">
+                    <span class="header-meta">
+                          <span class="meta-chip"><i class="fas fa-signal"></i>حالة النظام: نشط</span>
+                        <span class="meta-chip"><i class="fas fa-calendar-days"></i>@DateTime.Now.ToString("yyyy/MM/dd")</span>
+
+                    </span>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <span class="header-user-slot">
+                            <span class="header-user">
+                                <span class="status-dot"></span>
+                                <span>@User.Identity.Name</span>
+                            </span>
+                        </span>
+                    }
+                </div>
+            </header>
+
+            <section class="panel">
+                @RenderBody()
+            </section>
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+

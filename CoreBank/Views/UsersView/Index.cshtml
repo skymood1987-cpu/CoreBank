@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<MinCoreBank.Models.Users>
 
 @{
-    ViewData["Title"] = "إدارة المستخدمين";
+    ViewData["Title"] = "إدارة المستخدمين النهائيين";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
     // Get pagination data from ViewBag
@@ -26,68 +26,24 @@
         </button>
     </div>
 
-    <!-- Filter Section -->
-    <div class="banking-card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>تصفية المستخدمين</h5>
-        </div>
-        <div class="card-body">
-            <form id="filterForm" method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label for="statusFilter" class="form-label">الحالة</label>
-                    <select class="form-select" id="statusFilter" name="statusFilter">
-                        <option value="all" selected="@(statusFilter == "all")">جميع الحالات</option>
-                        <option value="active" selected="@(statusFilter == "active")">نشط</option>
-                        <option value="suspended" selected="@(statusFilter == "suspended")">موقوف</option>
-                        <option value="disabled" selected="@(statusFilter == "disabled")">معطل</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="roleFilter" class="form-label">الدور</label>
-                    <select class="form-select" id="roleFilter" name="roleFilter">
-                        <option value="all" selected="@(roleFilter == "all")">جميع الأدوار</option>
-                        <option value="teller" selected="@(roleFilter == "teller")">مشغل</option>
-                        <option value="manager" selected="@(roleFilter == "manager")">مدير</option>
-                        <option value="admin" selected="@(roleFilter == "admin")">ادمن</option>
-                        <option value="auditor" selected="@(roleFilter == "auditor")">مدقق</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="branchFilter" class="form-label">الفرع</label>
-                    <select class="form-select" id="branchFilter" name="branchFilter">
-                        <option value="all" selected="@(branchFilter == "all")">جميع الفروع</option>
-                        <!-- Will be populated dynamically -->
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="searchTerm" class="form-label">بحث</label>
-                    <input type="text" class="form-control" id="searchTerm" name="searchTerm" value="@searchTerm" placeholder="ابحث بالاسم أو المعرف...">
-                </div>
-                <div class="col-12 text-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-2"></i>بحث
-                    </button>
-                    <a href="@Url.Action("Index")" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>إعادة تعيين
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Users Table -->
     <div class="banking-card">
         <div class="card-header">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="input-group">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-5 col-md-7">
+                    <div class="input-group users-search-group">
                         <input type="text" id="searchInput" class="form-control" placeholder="ابحث بالاسم أو المعرف...">
-                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                        <button class="btn btn-outline-secondary users-search-btn" type="button" id="searchButton">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
                 </div>
-                
+                <div class="col-lg-7 col-md-5 text-md-end">
+                    <div class="users-summary-chip">
+                        <i class="fas fa-users me-2"></i>
+                        إجمالي المستخدمين: <strong>@totalCount</strong>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -492,9 +448,81 @@
 
 @section Styles {
     <style>
+        .banking-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 14px 28px rgba(10, 37, 74, 0.08);
+            overflow: hidden;
+        }
+
+        .banking-card .card-header {
+            background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+            border-bottom: 1px solid var(--line);
+            padding: 16px 18px;
+        }
+
+        .banking-card .card-body {
+            padding: 18px;
+        }
+
+        .users-search-group .form-control {
+            background: #f8fbff;
+            border-color: var(--line);
+            min-height: 42px;
+        }
+
+        .users-search-btn {
+            min-width: 46px;
+            border-color: var(--line);
+            color: #173a64;
+            background: #f8fbff;
+        }
+
+        .users-summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 9px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #f6f9ff;
+            color: #173a64;
+            font-size: .88rem;
+            font-weight: 700;
+        }
+
         .banking-table th {
             background-color: #1a3a6c;
             color: white;
+            border-color: #1a3a6c;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .banking-table td {
+            vertical-align: middle;
+        }
+
+        .banking-table tbody tr:nth-child(even) {
+            background: #fbfdff;
+        }
+
+        .table-responsive {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .pagination .page-link {
+            border-radius: 10px;
+            color: #173a64;
+            border-color: var(--line);
+            margin: 0 2px;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(90deg, #123c78, #0c2e61);
+            border-color: #123c78;
         }
 
         .badge {

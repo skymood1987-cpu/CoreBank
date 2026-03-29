@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Drawing;
 using System.Linq;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 using System.Net.Http;
-using Newtonsoft.Json;
+using System.Security.Claims;
+using System.Text.Json;
 public class TimeRestrictionMiddleware
 {
     private readonly RequestDelegate _next;
@@ -25,21 +23,29 @@ public async Task<DateTime> GetBaghdadTimeAsync()
 {
     using var client = new HttpClient();
     var response = await client.GetStringAsync("https://worldtimeapi.org/api/timezone/Asia/Baghdad");
-    dynamic data = JsonConvert.DeserializeObject(response);
-    return DateTime.Parse(data.datetime.ToString());
+    using var json = JsonDocument.Parse(response);
+    var dateTimeString = json.RootElement.GetProperty("datetime").GetString();
+    return DateTime.TryParse(dateTimeString, out var parsed) ? parsed : DateTime.UtcNow;
 }
 
 
 public async Task InvokeAsync(HttpContext context)
     {
         // Get Baghdad time (UTC+3)
-        var baghdadTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Baghdad");
+        TimeZoneInfo baghdadTimeZone;
+        try
+        {
+            baghdadTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Baghdad");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            baghdadTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Arabic Standard Time");
+        }
         var baghdadTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, baghdadTimeZone);
-
         // FOR TESTING - Uncomment to simulate time outside window
         // var baghdadTime = new DateTime(baghdadTime.Year, baghdadTime.Month, baghdadTime.Day, 15, 0, 0); // 3PM Baghdad
 
-        var start = new TimeSpan(8, 30, 0); // 8:30 AM Baghdad Time
+        var start = new TimeSpan(6, 30, 0); // 8:30 AM Baghdad Time
         var end = new TimeSpan(14, 30, 0);  // 2:30 PM Baghdad Time
 
         // Always allowed paths (case insensitive)
@@ -215,6 +221,44 @@ public async Task InvokeAsync(HttpContext context)
                 </html>
                 """);
             return;
+        }
+
+        var requiresPasswordChange =
+            context.User.Identity?.IsAuthenticated == true &&
+            (string.Equals(context.User.FindFirst("MustChangePassword")?.Value, "true", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(context.User.FindFirst("LimitedAccess")?.Value, "password-change-only", StringComparison.OrdinalIgnoreCase));
+
+        if (requiresPasswordChange)
+        {
+            var forcedChangePaths = new[]
+            {
+                "/authview/changepassword",
+                "/authview/logout",
+                "/api/auth/change-password",
+                "/api/auth/logout",
+                "/api/auth/current-user"
+            };
+
+            var isForcedChangePath = forcedChangePaths.Any(p => requestedPath.StartsWith(p));
+
+            if (!isForcedChangePath)
+            {
+                if (requestedPath.StartsWith("/api/"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        success = false,
+                        requiresPasswordChange = true,
+                        redirectUrl = "/AuthView/ChangePassword",
+                        message = "Password change required before accessing the system."
+                    });
+                    return;
+                }
+
+                context.Response.Redirect("/AuthView/ChangePassword");
+                return;
+            }
         }
 
         await _next(context);

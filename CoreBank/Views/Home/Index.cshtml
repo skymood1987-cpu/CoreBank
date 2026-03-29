@@ -1,0 +1,341 @@
+@model MinCoreBank.Models.ViewModels.HomeDashboardViewModel
+@{
+    ViewData["Title"] = "لوحة التحكم";
+    var arCulture = new System.Globalization.CultureInfo("ar-IQ");
+    var totalFlow = Model.TotalDebitToday + Model.TotalCreditToday;
+    var debitShare = totalFlow > 0 ? (Model.TotalDebitToday / totalFlow) * 100m : 50m;
+    var creditShare = totalFlow > 0 ? (Model.TotalCreditToday / totalFlow) * 100m : 50m;
+    var maxCount = Math.Max(1, Model.MaxDailyTransactionCount);
+    var n = Model.DailyTransactionCounts.Count;
+    var w = 620m;
+    var h = 240m;
+    var px = 44m;
+    var pyTop = 18m;
+    var pyBottom = 36m;
+    var plotW = w - (2 * px);
+    var plotH = h - pyTop - pyBottom;
+    var step = n > 1 ? (plotW / (n - 1)) : 0m;
+    var chartPoints = Model.DailyTransactionCounts.Select((p, i) =>
+    {
+        var x = px + (step * i);
+        var y = pyTop + (plotH - ((decimal)p.Count / maxCount) * plotH);
+        return (X: x, Y: y, p.Date, p.Count);
+    }).ToList();
+
+    string F(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    string BuildSmoothLinePath(IReadOnlyList<(decimal X, decimal Y, DateTime Date, int Count)> source)
+    {
+        if (source.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (source.Count == 1)
+        {
+            return $"M {F(source[0].X)} {F(source[0].Y)}";
+        }
+
+        var path = $"M {F(source[0].X)} {F(source[0].Y)}";
+
+        for (var i = 0; i < source.Count - 1; i++)
+        {
+            var current = source[i];
+            var next = source[i + 1];
+            var controlX = (current.X + next.X) / 2m;
+            path += $" C {F(controlX)} {F(current.Y)}, {F(controlX)} {F(next.Y)}, {F(next.X)} {F(next.Y)}";
+        }
+
+        return path;
+    }
+
+    string BuildAreaPath(IReadOnlyList<(decimal X, decimal Y, DateTime Date, int Count)> source)
+    {
+        if (source.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var linePath = BuildSmoothLinePath(source);
+        var baseline = pyTop + plotH;
+        var first = source[0];
+        var last = source[source.Count - 1];
+        return $"{linePath} L {F(last.X)} {F(baseline)} L {F(first.X)} {F(baseline)} Z";
+    }
+
+    var linePath = BuildSmoothLinePath(chartPoints);
+    var areaPath = BuildAreaPath(chartPoints);
+}
+
+@section Styles {
+    <style>
+        .dashboard-wrap { display: grid; gap: 14px; }
+        .dashboard-head { border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(145deg, #fafdff 0%, #f2f7ff 100%); padding: 14px 16px; }
+        .dashboard-title { margin: 0; color: #163760; font-size: 1.35rem; font-weight: 800; }
+        .dashboard-subtitle { margin: 6px 0 0; color: #5a6f8d; font-size: .92rem; font-weight: 700; }
+
+        .charts-grid { display: grid; grid-template-columns: 280px 1fr; gap: 12px; }
+        .chart-card {
+            border: 1px solid var(--line); border-radius: 14px; background: #fff;
+            box-shadow: 0 10px 20px rgba(10, 35, 70, 0.06); padding: 14px;
+            position: relative;
+            overflow: hidden;
+            transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+        }
+        .chart-card:hover {
+            transform: translateY(-4px);
+            border-color: #cdddf0;
+            box-shadow: 0 16px 30px rgba(10, 35, 70, 0.12);
+        }
+        .chart-title { margin: 0 0 4px; color: #173a64; font-size: 1.02rem; font-weight: 800; }
+        .chart-subtitle { margin: 0 0 12px; color: #5f7695; font-size: .86rem; font-weight: 700; }
+
+        .ratio-ring {
+            --value: 50;
+            width: 156px; height: 156px; border-radius: 50%;
+            margin: 6px auto 12px;
+            background: conic-gradient(#1e5dac calc(var(--value) * 1%), #2db36f 0);
+            position: relative;
+            box-shadow: 0 16px 28px rgba(18, 59, 110, 0.18);
+            transition: transform .3s ease, box-shadow .3s ease;
+        }
+        .ratio-ring::before {
+            content: "";
+            position: absolute; inset: -8px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(255,255,255,.45), rgba(255,255,255,0) 40%, rgba(255,255,255,.35));
+            mix-blend-mode: screen;
+            animation: ratioSweep 3.2s linear infinite;
+            opacity: .55;
+        }
+        .ratio-ring:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 22px 34px rgba(18, 59, 110, 0.24); }
+        .ratio-ring::after {
+            content: "";
+            position: absolute; inset: 22px;
+            border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1px #e4ebf3;
+        }
+        .ratio-center {
+            position: absolute; inset: 0; display: grid; place-items: center; z-index: 1;
+            color: #123a6c; font-weight: 800;
+            text-shadow: 0 1px 0 #fff, 0 4px 14px rgba(18, 58, 108, .18);
+        }
+        .ratio-leg { display: grid; gap: 8px; }
+        .ratio-item { display: flex; align-items: center; justify-content: space-between; font-size: .9rem; font-weight: 800; color: #1a355b; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-inline-start: 6px; }
+        .dot.debit { background: #1e5dac; }
+        .dot.credit { background: #2db36f; }
+
+        .line-wrap {
+            border: 1px solid #e4ebf3; border-radius: 12px;
+            background: linear-gradient(180deg, #fcfeff 0%, #f6faff 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -10px 18px rgba(26, 76, 138, .05);
+            padding: 10px;
+            overflow: hidden;
+        }
+        .line-svg { width: 100%; height: auto; display: block; }
+        .line-axis-y { stroke: #8ea4c0; stroke-width: 1.2; }
+        .line-tick { stroke: #b7c6d8; stroke-width: 1; }
+        .line-grid { stroke: #e8eff7; stroke-width: 1; }
+        .line-area { fill: url(#lineAreaGradient); opacity: .35; }
+        .line-path {
+            fill: none; stroke: url(#lineStrokeGradient); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round;
+            stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: lineDraw 1s ease-out forwards;
+            filter: drop-shadow(0 3px 8px rgba(29, 77, 143, .18));
+        }
+        .line-dot-halo {
+            fill: rgba(39, 96, 170, .22);
+            animation: haloPulse 2.8s ease-in-out infinite;
+        }
+        .line-dot {
+            fill: #1d4d8f; filter: drop-shadow(0 3px 6px rgba(29, 77, 143, .18));
+        }
+        .line-dot:hover { fill: #2d67b3; }
+        .line-x { fill: #607594; font-size: 12px; font-weight: 700; text-anchor: middle; }
+        .line-date { fill: #8397b2; font-size: 11px; font-weight: 700; text-anchor: middle; }
+        .line-y { fill: #607594; font-size: 12px; font-weight: 700; }
+        .line-y-title { fill: #335377; font-size: 12px; font-weight: 800; }
+        .line-v { fill: #1a355b; font-size: 12px; font-weight: 800; text-anchor: middle; }
+        .line-axis {
+            margin-top: 8px;
+            display: grid;
+            grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr));
+            gap: 6px;
+            text-align: center;
+        }
+        .line-axis .d {
+            color: #5f7695;
+            font-size: .75rem;
+            font-weight: 700;
+            line-height: 1.15;
+        }
+        @@keyframes lineDraw {
+            to { stroke-dashoffset: 0; }
+        }
+        @@keyframes ratioSweep {
+            to { transform: rotate(360deg); }
+        }
+        @@keyframes haloPulse {
+            0%, 100% { r: 7; opacity: .14; }
+            50% { r: 9; opacity: .26; }
+        }
+
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+        .metric-card {
+            position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
+            background: #fff; box-shadow: 0 10px 20px rgba(10, 35, 70, 0.08); padding: 14px;
+            transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease, background-color .24s ease;
+        }
+        .metric-card::before { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #2f63ad 0%, #174786 100%); }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            border-color: #cdddf0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            box-shadow: 0 18px 30px rgba(10, 35, 70, 0.14);
+        }
+        .metric-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .metric-name { margin: 0; color: #1a355b; font-size: 1.02rem; font-weight: 800; }
+        .metric-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #eef4ff; color: #1d4d8f; transition: transform .24s ease, background-color .24s ease, color .24s ease; }
+        .metric-card:hover .metric-icon { transform: scale(1.06); background: #1d4d8f; color: #fff; }
+        .metric-value { margin: 14px 0 4px; color: #112d50; font-size: 1.7rem; font-weight: 900; line-height: 1.2; }
+        .metric-meta { margin: 0; color: #607594; font-size: .86rem; font-weight: 700; }
+        .status-chip { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 6px 10px; font-size: .84rem; font-weight: 800; }
+        .status-chip.ok { background: #e8f8ee; color: #157a3f; border: 1px solid #bfe8cd; }
+        .status-chip.warn { background: #fff5e9; color: #945b16; border: 1px solid #f4d8ad; }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .8; }
+        .metric-card:hover .status-chip.ok { background: #157a3f; color: #fff; border-color: #157a3f; }
+        .metric-card:hover .status-chip.warn { background: #945b16; color: #fff; border-color: #945b16; }
+
+        .summary-bar {
+            border: 1px solid var(--line); border-radius: 14px; background: #fff;
+            box-shadow: 0 10px 20px rgba(10, 35, 70, 0.06); padding: 12px 14px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .summary-item { color: #1e3c65; font-size: .95rem; font-weight: 800; }
+        .summary-item small { color: #667d9d; font-weight: 700; }
+
+        @@media (max-width: 992px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+        .charts-grid.line-only { grid-template-columns: 1fr; }
+    </style>
+}
+
+<div class="dashboard-wrap">
+    <section class="dashboard-head">
+        <h2 class="dashboard-title">ملخص يوم العمل - الأستاذ العام</h2>
+        <p class="dashboard-subtitle">
+            الفرع: @(string.IsNullOrWhiteSpace(Model.BranchId) ? "-" : Model.BranchId)
+            <span class="mx-1">|</span>
+            التاريخ: @Model.BusinessDate.ToString("yyyy/MM/dd")
+        </p>
+    </section>
+
+    <section class="charts-grid @(Model.IsDayClosed ? "line-only" : string.Empty)">
+        @if (!Model.IsDayClosed)
+        {
+        <article class="chart-card">
+            <h3 class="chart-title">نسبة حركة اليوم</h3>
+            <p class="chart-subtitle">توزيع المدين والدائن</p>
+            <div class="ratio-ring" style="--value:@debitShare.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
+                <div class="ratio-center">@debitShare.ToString("0.#")%</div>
+            </div>
+            <div class="ratio-leg">
+                <div class="ratio-item"><span><span class="dot debit"></span>مدين</span><span>@debitShare.ToString("0.##")%</span></div>
+                <div class="ratio-item"><span><span class="dot credit"></span>دائن</span><span>@creditShare.ToString("0.##")%</span></div>
+            </div>
+        </article>
+        }
+
+        <article class="chart-card">
+            <h3 class="chart-title"> عدد القيود اليومية </h3>
+            <p class="chart-subtitle">آخر 7 أيام عمل</p>
+            <div class="line-wrap">
+                <svg class="line-svg" viewBox="0 0 @w @h" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <linearGradient id="lineAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#2f63ad"></stop>
+                            <stop offset="100%" stop-color="#2f63ad" stop-opacity="0"></stop>
+                        </linearGradient>
+                        <linearGradient id="lineStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="#2f63ad"></stop>
+                            <stop offset="50%" stop-color="#1f81d9"></stop>
+                            <stop offset="100%" stop-color="#2db36f"></stop>
+                        </linearGradient>
+                    </defs>
+                    <line class="line-axis-y" x1="@px" y1="@pyTop" x2="@px" y2="@(pyTop + plotH)"></line>
+                    @for (var g = 0; g <= 4; g++)
+                    {
+                        var gy = pyTop + (plotH * g / 4);
+                        var tickValue = Math.Round(maxCount - ((maxCount * g) / 4m), 0);
+                        <line class="line-tick" x1="@(px - 5)" y1="@gy" x2="@px" y2="@gy"></line>
+                        <line class="line-grid" x1="@px" y1="@gy" x2="@(w - px)" y2="@gy"></line>
+                        <svg:text class="line-y" x="@(px - 10)" y="@(gy + 4)" text-anchor="end">@tickValue</svg:text>
+                    }
+                    @if (n > 0)
+                    {
+                        <path class="line-area" d="@areaPath"></path>
+                    }
+                    <path class="line-path" d="@linePath"></path>
+                    @for (var i = 0; i < n; i++)
+                    {
+                        var p = Model.DailyTransactionCounts[i];
+                        var x = px + (step * i);
+                        var y = pyTop + (plotH - ((decimal)p.Count / maxCount) * plotH);
+                        var valueLabelY = y <= (pyTop + 16) ? (y + 14) : (y - 10);
+                        var delay = $"{(i * 0.12m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}s";
+                        <circle class="line-dot-halo" cx="@x" cy="@y" r="8" style="animation-delay:@delay"></circle>
+                        <circle class="line-dot" cx="@x" cy="@y" r="4"></circle>
+                        @if (p.Count > 0)
+                        {
+                            <svg:text class="line-v" x="@x" y="@valueLabelY">@p.Count</svg:text>
+                        }
+                        <svg:text class="line-x" x="@x" y="@(h - 14)">@p.Date.ToString("dd/MM", arCulture)</svg:text>
+                    }
+                    <svg:text class="line-y-title" x="18" y="@(pyTop + (plotH / 2))" transform="rotate(-90 18 @(pyTop + (plotH / 2)))">عدد القيود</svg:text>
+                </svg>
+                <div class="line-axis" style="--cols:@Math.Max(1, n)">
+                    @foreach (var p in Model.DailyTransactionCounts)
+                    {
+                        <div class="d">@p.Date.ToString("dd/MM")</div>
+                    }
+                </div>
+            </div>
+        </article>
+    </section>
+
+    @if (!Model.IsDayClosed)
+    {
+    <section class="metric-grid">
+        <article class="metric-card">
+            <div class="metric-head"><h3 class="metric-name">إجمالي الدائن اليومي</h3><span class="metric-icon"><i class="fas fa-arrow-up"></i></span></div>
+            <p class="metric-value">@Model.TotalCreditToday.ToString("N2")</p>
+            <p class="metric-meta">دينار عراقي</p>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><h3 class="metric-name">إجمالي المدين اليومي</h3><span class="metric-icon"><i class="fas fa-arrow-down"></i></span></div>
+            <p class="metric-value">@Model.TotalDebitToday.ToString("N2")</p>
+            <p class="metric-meta">دينار عراقي</p>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><h3 class="metric-name">عدد قيود اليوم</h3><span class="metric-icon"><i class="fas fa-list-check"></i></span></div>
+            <p class="metric-value">@Model.TransactionsCountToday</p>
+            <p class="metric-meta">قيود مكتملة</p>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><h3 class="metric-name">حالة إقفال يوم العمل</h3><span class="metric-icon"><i class="fas fa-lock"></i></span></div>
+            <p class="metric-value" style="font-size:1.1rem; margin-top:10px;">
+                @if (Model.IsDayClosed) { <span class="status-chip ok"><span class="status-dot"></span>مقفول ومعتمد</span> }
+                else { <span class="status-chip warn"><span class="status-dot"></span>غير مقفول</span> }
+            </p>
+            <p class="metric-meta">@(string.IsNullOrWhiteSpace(Model.ApprovedBy) ? "بانتظار اعتماد المدير" : $"اعتماد: {Model.ApprovedBy}")</p>
+        </article>
+    </section>
+
+    <section class="summary-bar">
+        <span class="summary-item">فرق الميزان اليومي: <small>@Model.DailyDifference.ToString("N2") دينار</small></span>
+        <span class="summary-item">حالة الميزان: <small>@(Model.IsBalanced ? "مطابق" : "غير مطابق")</small></span>
+        <span class="summary-item">متوسط قيمة القيد: <small>@Model.AvgTransactionValueToday.ToString("N2") دينار</small></span>
+        <span class="summary-item">نسبة القيود المعكوسة: <small>@Math.Max(0m, 100m - Model.CompletionRateToday).ToString("0.##")%</small></span>
+    </section>
+    }
+</div>

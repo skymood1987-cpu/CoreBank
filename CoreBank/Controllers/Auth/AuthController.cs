@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 [ApiController]
 public class AuthController : ControllerBase
 {
+    private const int PasswordExpiryDays = 30;
     private readonly IUserService _userService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<AuthController> _logger;
@@ -164,19 +165,19 @@ public class AuthController : ControllerBase
                 });
             }
 
-            // 6. Check password expiry (90 days)
-            var passwordExpiryDate = user.LastPasswordChange.AddDays(90);
+            // 6. Check password expiry (30 days)
+            var passwordExpiryDate = user.LastPasswordChange.AddDays(PasswordExpiryDays);
             if (passwordExpiryDate < DateTime.Now)
             {
                 _logger.LogInformation($"Password expired for user {user.Id}. Requiring change.");
                 await _userService.RequirePasswordChange(user.Id);
 
-                // Create claims with MustChangePassword = true
-                var claims = CreateClaims(user, true);
-                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var principal = new ClaimsPrincipal(identity);
+                // Expired passwords get the same limited session as other forced-change flows.
+                var limitedClaims = CreateLimitedClaims(user);
+                var limitedIdentity = new ClaimsIdentity(limitedClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var limitedPrincipal = new ClaimsPrincipal(limitedIdentity);
 
-                await SignInUser(principal, false);
+                await SignInUser(limitedPrincipal, true);
 
                 // Set test cookie for debugging
                 SetTestCookie("expired_password", "true");
@@ -209,7 +210,7 @@ public class AuthController : ControllerBase
             return Ok(new
             {
                 success = true,
-                redirectUrl = "/GlTransactionsView/index",
+                redirectUrl = "/Dashboard/Index",
                 username = user.Name_en,
                 requiresPasswordChange = false,
                 message = "Login successful"

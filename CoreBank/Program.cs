@@ -111,7 +111,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 
@@ -124,7 +127,7 @@ app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllerRoute(
         name: "default",
-        pattern: "{controller=GlTransactionsView}/{action=Index}/{id?}");
+        pattern: "{controller=AuthView}/{action=Login}/{id?}");
 });
 
 app.MapControllers();

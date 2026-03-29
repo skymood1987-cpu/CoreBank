@@ -25,6 +25,8 @@ namespace MinCoreBank.Repositories
             var query = _context.GlTransactions
                 .Where(t => t.Status == "completed");
 
+            query = ApplyApprovedLockedDayFilter(query, request.BranchId);
+
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.BranchId))
             {
@@ -70,6 +72,8 @@ namespace MinCoreBank.Repositories
         {
             var query = _context.GlTransactions
                 .Where(t => t.Status == "completed");
+
+            query = ApplyApprovedLockedDayFilter(query, request.BranchId);
 
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.BranchId))
@@ -143,6 +147,8 @@ namespace MinCoreBank.Repositories
             var query = _context.GlTransactions
                 .Where(t => t.Status == "completed");
 
+            query = ApplyApprovedLockedDayFilter(query, request.BranchId);
+
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.BranchId))
             {
@@ -188,6 +194,8 @@ namespace MinCoreBank.Repositories
         {
             var query = _context.GlTransactions
                 .Where(t => t.Status == "completed");
+
+            query = ApplyApprovedLockedDayFilter(query, request.BranchId);
 
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.BranchId))
@@ -240,6 +248,8 @@ namespace MinCoreBank.Repositories
         {
             var query = _context.GlTransactions
                 .Where(t => t.Status == "completed");
+
+            query = ApplyApprovedLockedDayFilter(query, request.BranchId);
 
             // Apply branch filter
             if (!string.IsNullOrEmpty(request.BranchId))
@@ -318,12 +328,15 @@ namespace MinCoreBank.Repositories
 
             // 2. Calculate balances from transactions (with branch filter)
             var balanceQuery = _context.GlTransactions
-                .Where(t => t.Status == "completed");
+                .Where(t => t.Status == "completed" && t.Date.HasValue);
 
             if (!string.IsNullOrEmpty(request.BranchId))
             {
                 balanceQuery = balanceQuery.Where(t => t.BranchId == request.BranchId);
             }
+
+            // Enforce business rule: include only records from approved/locked business days.
+            balanceQuery = ApplyApprovedLockedDayFilter(balanceQuery, request.BranchId);
 
             var accountBalances = await balanceQuery
                 .GroupBy(t => t.GlId.Trim())
@@ -360,6 +373,23 @@ namespace MinCoreBank.Repositories
             return treeNodes;
         }
 
+        private IQueryable<GlTransaction> ApplyApprovedLockedDayFilter(IQueryable<GlTransaction> transactionQuery, string branchId = null)
+        {
+            var lockedApprovals = _context.DailyBranchApprovals
+                .Where(a => a.IsLocked);
+
+            if (!string.IsNullOrWhiteSpace(branchId))
+            {
+                lockedApprovals = lockedApprovals.Where(a => a.BranchId == branchId);
+            }
+
+            return transactionQuery.Where(t =>
+                t.Date.HasValue &&
+                lockedApprovals.Any(a =>
+                    a.BranchId == t.BranchId &&
+                    a.ApprovalDate.Date == t.Date.Value.Date));
+        }
+
         public async Task<IEnumerable<GlTreeReportDto>> GetGlTreeByBranchAsync(string branchId)
         {
             var request = new GlTreeReportRequest { BranchId = branchId };
@@ -374,10 +404,24 @@ namespace MinCoreBank.Repositories
 
         public async Task<GlTreeReportDto> GetGlNodeDetailsAsync(string glId, string branchId = null)
         {
-            // FIXED: Always return account details even if balance is zero
-            var request = new GlTreeReportRequest { StartingGlId = glId, BranchId = branchId };
+            if (string.IsNullOrWhiteSpace(glId))
+            {
+                return null;
+            }
+
+            var normalizedGlId = glId.Trim();
+            var accountExists = await _context.GeneralLedgerAccounts
+                .AsNoTracking()
+                .AnyAsync(a => a.Status != "closed" && a.Id.ToString() == normalizedGlId);
+
+            if (!accountExists)
+            {
+                return null;
+            }
+
+            var request = new GlTreeReportRequest { StartingGlId = normalizedGlId, BranchId = branchId };
             var result = await GetGlTreeReportAsync(request);
-            return result.FirstOrDefault();
+            return result.FirstOrDefault(r => r.GlId == normalizedGlId);
         }
 
         public async Task<IEnumerable<GlTreeDisplayDto>> GetFlatTreeReportAsync(GlTreeReportRequest request)
@@ -476,11 +520,16 @@ namespace MinCoreBank.Repositories
             // This ensures buttons work even when credit = debit
             var filteredNodes = allNodes; // Include all nodes
 
-            // Return specific node or all filtered root nodes
-            if (!string.IsNullOrEmpty(startingGlId) && nodeDict.ContainsKey(startingGlId))
+            // Return specific node when a starting account is requested.
+            if (!string.IsNullOrEmpty(startingGlId))
             {
-                var specificNode = nodeDict[startingGlId];
-                return new List<GlTreeReportDto> { specificNode };
+                if (nodeDict.TryGetValue(startingGlId, out var specificNode))
+                {
+                    return new List<GlTreeReportDto> { specificNode };
+                }
+
+                // Important: no fallback to root categories when the searched account is not found.
+                return new List<GlTreeReportDto>();
             }
 
             // Return only root nodes

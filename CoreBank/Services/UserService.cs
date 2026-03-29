@@ -753,7 +753,8 @@ namespace MinCoreBank.Services
             {
                 await connection.OpenAsync();
 
-                var warningDate = DateTime.Now.AddDays(-(90 - daysUntilExpiry));
+                const int passwordExpiryDays = 30;
+                var warningDate = DateTime.Now.AddDays(-(passwordExpiryDays - daysUntilExpiry));
 
                 var users = await connection.QueryAsync<Users>(@"
             SELECT 

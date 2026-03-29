@@ -49,54 +49,14 @@
             <i class="fas fa-sitemap fa-lg me-2"></i>@ViewData["Title"]
         </h1>
         <div class="btn-group">
-            <button type="button" class="btn btn-success" id="exportReport">
+            <button type="button" class="btn btn-primary" id="exportReport">
                 <i class="fas fa-file-export me-2"></i>تصدير التقرير (Excel)
             </button>
         </div>
     </div>
 
-    <!-- Report Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
-                    <h4 class="text-primary">@totalBalance.ToString("N2")</h4>
-                    <p class="text-muted mb-0">إجمالي الرصيد</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-coins fa-2x text-success mb-2"></i>
-                    <h4 class="text-success">@totalAvailableBalance.ToString("N2")</h4>
-                    <p class="text-muted mb-0">الرصيد المتاح</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-file-invoice-dollar fa-2x text-info mb-2"></i>
-                    <h4 class="text-info">@leafNodeCount</h4>
-                    <p class="text-muted mb-0">الحسابات الطرفية</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-layer-group fa-2x text-warning mb-2"></i>
-                    <h4 class="text-warning">@hasChildrenCount</h4>
-                    <p class="text-muted mb-0">مجموعات الحسابات</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Transaction Query Section - UPDATED -->
-    <div class="row mt-3">
+    <div class="row mt-3 report-query-row">
         <div class="col-12">
             <div class="transaction-query-section p-3 border rounded bg-light">
                 <h6 class="mb-3"><i class="fas fa-search-dollar me-2"></i>استعلام المعاملات</h6>
@@ -148,32 +108,23 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Report Data -->
-<div class="banking-card">
+<div class="banking-card report-card">
     <div class="card-header">
         <div class="row align-items-center">
             <div class="col-md-6">
-                <h5 class="mb-0">
+                <h5 class="mb-0 report-data-title">
                     <i class="fas fa-table me-2"></i>بيانات التقرير - الفرع @ViewBag.userBranchCode
-                    <span class="badge bg-secondary ms-2">@totalRecords سجل</span>
+                    <span class="badge bg-secondary ms-2 report-data-badge">@totalRecords سجل</span>
                 </h5>
-            </div>
-            <div class="col-md-6 text-end">
-                <div class="input-group" style="max-width: 300px; margin-right: auto; margin-left: 0;">
-                    <input type="text" id="searchAccounts" class="form-control" placeholder="ابحث برقم أو اسم الحساب...">
-                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
             </div>
         </div>
     </div>
 
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover banking-table" id="reportTable">
+        <div class="table-responsive report-table-container">
+            <table class="table table-bordered banking-table" id="reportTable">
                 <thead class="table-dark">
                     <tr>
                         <th width="120">رقم الدليل</th>
@@ -249,7 +200,15 @@
             </table>
         </div>
 
-        @if (modelData == null || !modelData.Any())
+        @if (ViewBag.NoSearchResults == true)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-1">لا توجد نتائج</p>
+                <small class="text-muted">لم يتم العثور على رقم الحساب: @ViewBag.AccountNumberSearch</small>
+            </div>
+        }
+        else if (modelData == null || !modelData.Any())
         {
             <div class="text-center py-5">
                 <i class="fas fa-sitemap fa-3x text-muted mb-3"></i>
@@ -257,6 +216,7 @@
             </div>
         }
     </div>
+</div>
 </div>
 
 <!-- Transactions Modal -->
@@ -304,6 +264,100 @@
 
 @section Styles {
     <style>
+        html, body {
+            overflow-x: hidden !important;
+        }
+
+        .content,
+        .panel,
+        .banking-container,
+        .banking-card,
+        .banking-card .card-body {
+            overflow-x: hidden !important;
+        }
+
+        .banking-container {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            padding-inline-start: 22px !important; /* RTL: keeps hard gap from sidebar edge */
+            padding-inline-end: 8px !important;
+        }
+
+        .report-card {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+            isolation: isolate;
+            contain: layout paint;
+            margin-inline: 0;
+            inline-size: 100%;
+            max-inline-size: 100%;
+            margin-inline-end: auto;
+        }
+
+        .report-card .card-body,
+        .report-card .card-header {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .report-table-container {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            inline-size: 100%;
+            max-inline-size: 100%;
+            overflow-x: auto !important;
+            overflow-y: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-sizing: border-box;
+            clip-path: inset(0);
+        }
+
+        .report-table-container #reportTable {
+            width: max(100%, 1100px);
+            min-width: 1100px;
+            margin-bottom: 0;
+            table-layout: auto;
+        }
+
+        .banking-container .row {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .banking-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+        }
+
+        .banking-card .card-header {
+            background: #f8fbff;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .transaction-query-section {
+            background: #f8fbff !important;
+            border: 1px solid var(--line) !important;
+            border-radius: 12px;
+        }
+
+        .banking-table th {
+            background: #123c78 !important;
+            border-color: #123c78 !important;
+        }
+
+        .banking-table td {
+            color: var(--ink) !important;
+        }
+
         /* Transaction Results Styling */
         /* NEW: Debit and Credit columns styling */
         .banking-table td:nth-child(4), /* مدين column */
@@ -490,6 +544,8 @@
         .table-responsive {
             max-height: 600px;
             overflow-y: auto;
+            overflow-x: auto;
+            min-width: 0;
         }
 
         /* Single-digit GL accounts - Black text */
@@ -511,36 +567,31 @@
                 font-size: 0.85em;
             }
 
-        /* Level-based background colors */
-        .level-0 {
-            background-color: #2c5e9c !important;
-            color: #000000 !important; /* Changed to black */
+        /* Remove persistent row coloring */
+        .level-0,
+        .level-1,
+        .level-2,
+        .level-3,
+        .level-4 {
+            background-color: transparent !important;
         }
 
-            .level-0 td {
-                color: #000000 !important; /* Changed to black */
+            .level-0 td,
+            .level-1 td,
+            .level-2 td,
+            .level-3 td,
+            .level-4 td {
+                background-color: transparent !important;
+                color: #000000 !important;
             }
 
-                .level-0 td:first-child .account-indent {
-                    color: #000000 !important; /* Changed to black */
+                .level-0 td:first-child .account-indent,
+                .level-1 td:first-child .account-indent,
+                .level-2 td:first-child .account-indent,
+                .level-3 td:first-child .account-indent,
+                .level-4 td:first-child .account-indent {
+                    color: #000000 !important;
                 }
-
-        .level-1 {
-            background-color: #e3f2fd !important;
-            font-weight: 600;
-        }
-
-        .level-2 {
-            background-color: #f3f8ff !important;
-        }
-
-        .level-3 {
-            background-color: #fafafa !important;
-        }
-
-        .level-4 {
-            background-color: #ffffff !important;
-        }
 
         .positive-balance {
             color: #198754 !important;
@@ -557,13 +608,21 @@
             margin-left: 0;
         }
 
-        /* FIXED: Row hover effect without shaking */
-        .banking-table tbody tr:hover {
-            background-color: #fff9e6 !important;
-            transition: background-color 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            position: relative;
-            z-index: 1;
+        .banking-table tbody tr,
+        .banking-table tbody tr td {
+            transition: none !important;
+        }
+
+        .banking-table tbody tr:hover,
+        .banking-table.table-hover tbody tr:hover {
+            background-color: transparent !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .banking-table tbody tr:hover > td,
+        .banking-table.table-hover tbody tr:hover > td {
+            background-color: inherit !important;
         }
 
         /* Single-digit account highlighting */
@@ -613,6 +672,12 @@
             margin-top: 20px;
             padding-top: 15px;
             border-top: 2px solid #e9ecef;
+        }
+
+        #transactionsModal .modal-header .btn-close,
+        #transactionResultsModal .modal-header [data-bs-dismiss="modal"] {
+            margin-right: 0 !important;
+            margin-left: .8rem !important;
         }
 
         /* Balance columns styling - same size and color */
@@ -682,6 +747,81 @@
         .odd-row {
             background-color: #ffffff !important;
         }
+        .panel { overflow-x: hidden !important; }
+        .banking-container {
+            padding: 8px !important;
+            overflow-x: hidden !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin-inline: 0 auto !important;
+        }
+        .report-card,
+        .report-table-container {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin-inline: 0 auto !important;
+        }
+        .page-title { color: var(--ink) !important; font-size: 1.55rem !important; font-weight: 800 !important; }
+        .report-query-row { margin-bottom: 10px !important; }
+        .report-card .card-header { padding-top: 1rem !important; padding-bottom: .7rem !important; }
+        .report-data-title { font-size: .92rem !important; font-weight: 800 !important; color: #163760 !important; margin-top: 2px !important; }
+        .report-data-badge { font-size: .68rem !important; padding: 4px 8px !important; vertical-align: middle; }
+        .banking-card { background: var(--panel) !important; border: 1px solid var(--line) !important; border-radius: 14px !important; box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08) !important; }
+        .banking-card .card-header { background: #f8fbff !important; border-bottom: 1px solid var(--line) !important; }
+        .transaction-query-section { background: #f8fbff !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+        .banking-table th { background: #123c78 !important; border-color: #123c78 !important; color: #fff !important; }
+        .banking-table td { color: var(--ink) !important; }
+        /* Final hard-stop overflow fix for GlTreeReport page only */
+        body .shell .content .panel .banking-container {
+            inline-size: 100% !important;
+            max-inline-size: 100% !important;
+            overflow-x: hidden !important;
+        }
+
+        body .shell .content .panel .report-card {
+            inline-size: 100% !important;
+            max-inline-size: 100% !important;
+            overflow: hidden !important;
+        }
+
+        body .shell .content .panel .report-card > .card-body {
+            inline-size: 100% !important;
+            max-inline-size: 100% !important;
+            overflow-x: hidden !important;
+        }
+
+        body .shell .content .panel .report-table-container {
+            inline-size: 100% !important;
+            max-inline-size: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            margin: 0 !important;
+            padding-bottom: 2px;
+            overscroll-behavior-x: contain;
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-gutter: stable both-edges;
+            max-height: min(52vh, 560px) !important;
+        }
+
+        body .shell .content .panel .report-table-container > #reportTable {
+            width: max-content !important;
+            inline-size: max-content !important;
+            min-width: 980px !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        body .shell .content .panel .report-table-container > #reportTable th,
+        body .shell .content .panel .report-table-container > #reportTable td {
+            white-space: nowrap;
+        }
+
+        body .shell .content .panel .report-table-container > #reportTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
     </style>
 }
 
@@ -703,17 +843,13 @@
             // Fix for action buttons - delegate events to work with dynamic content
             $(document).on('click', '.view-details', function() {
                 const glId = $(this).data('gl-id');
-                viewAccountDetails(glId);
+                viewAccountDetails(glId, $(this).closest('tr'));
             });
 
             $(document).on('click', '.expand-children', function() {
                 const glId = $(this).data('gl-id');
                 loadChildren(glId);
             });
-
-            // Search functionality
-            $('#searchButton').on('click', filterAccounts);
-            $('#searchAccounts').on('keyup', filterAccounts);
 
             // TRANSACTION SEARCH - UPDATED VERSION WITH GL ACCOUNT SEARCH
             $('#searchTransactions').click(function() {
@@ -863,6 +999,51 @@
                 });
             }
 
+            function getRowAccountSnapshot($row) {
+                if (!$row || !$row.length) {
+                    return null;
+                }
+
+                const cells = $row.children('td');
+                const readAmount = index => {
+                    const raw = $(cells[index]).text().trim().replace(/,/g, '');
+                    const value = Number(raw);
+                    return Number.isFinite(value) ? value : 0;
+                };
+
+                return {
+                    glId: $(cells[0]).text().trim(),
+                    glName: $(cells[1]).text().trim(),
+                    level: $(cells[2]).text().trim(),
+                    debit: readAmount(3),
+                    credit: readAmount(4),
+                    balance: readAmount(5),
+                    ownBalance: readAmount(6)
+                };
+            }
+
+            function normalizeAccountDetails(data, rowSnapshot) {
+                const account = data || {};
+                const row = rowSnapshot || {};
+                const pick = (...values) => values.find(value => value !== undefined && value !== null && value !== '');
+
+                return {
+                    glId: pick(account.glId, account.GlId, row.glId),
+                    glName: pick(account.glName, account.GlName, row.glName),
+                    level: pick(account.level, account.Level, row.level),
+                    balance: Number(pick(row.balance, account.balance, account.Balance, 0)) || 0,
+                    ownBalance: Number(pick(row.ownBalance, account.ownBalance, account.OwnBalance, 0)) || 0,
+                    debit: Number(pick(row.debit, account.debit, account.Debit, 0)) || 0,
+                    credit: Number(pick(row.credit, account.credit, account.Credit, 0)) || 0,
+                    ownDebit: Number(pick(account.ownDebit, account.OwnDebit, 0)) || 0,
+                    ownCredit: Number(pick(account.ownCredit, account.OwnCredit, 0)) || 0,
+                    parentGlId: pick(account.parentGlId, account.ParentGlId),
+                    childCount: Number(pick(account.childCount, account.ChildCount, 0)) || 0,
+                    hasTransactions: Boolean(pick(account.hasTransactions, account.HasTransactions, false)),
+                    children: pick(account.children, account.Children, [])
+                };
+            }
+
             // NEW FUNCTION: Fetch account cumulative data from main table API
             function fetchAccountCumulativeData(glId, branchId, callback) {
                 $.ajax({
@@ -870,7 +1051,7 @@
                     type: 'GET',
                     success: function(accountData) {
                         console.log('Account cumulative data fetched:', accountData);
-                        callback(accountData);
+                        callback(normalizeAccountDetails(accountData));
                     },
                     error: function(xhr) {
                         console.error('Error fetching account data:', xhr);
@@ -1660,11 +1841,15 @@
                 }
             }
 
-            function viewAccountDetails(glId) {
+            function viewAccountDetails(glId, $row) {
+                const rowSnapshot = getRowAccountSnapshot($row);
+
                 $.ajax({
                     url: `/api/GlTreeReport/account/${glId}/details?branchId=${currentBranchId}`,
                     type: 'GET',
                     success: function(response) {
+                        const account = normalizeAccountDetails(response, rowSnapshot);
+
                         // Create a beautiful modal for account details
                         const detailsHtml = `
                             <div class="account-details-modal">
@@ -1672,36 +1857,52 @@
                                     <div class="col-md-6">
                                         <div class="detail-item">
                                             <label class="fw-bold">رقم الحساب:</label>
-                                            <span>${response.glId || 'N/A'}</span>
+                                            <span>${account.glId || 'N/A'}</span>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="detail-item">
                                             <label class="fw-bold">اسم الحساب:</label>
-                                            <span>${response.glName || 'N/A'}</span>
+                                            <span>${account.glName || 'N/A'}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="row mb-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-2">
                                         <div class="detail-item">
                                             <label class="fw-bold">المستوى:</label>
-                                            <span class="badge bg-info">${response.level || 'N/A'}</span>
+                                            <span class="badge bg-info">${account.level || 'N/A'}</span>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-2">
                                         <div class="detail-item">
-                                            <label class="fw-bold">الرصيد الإجمالي:</label>
-                                            <span class="${(response.balance || 0) >= 0 ? 'text-success' : 'text-danger'} fw-bold">
-                                                ${(response.balance || 0).toFixed(2)}
+                                            <label class="fw-bold">إجمالي المدين:</label>
+                                            <span class="text-danger fw-bold">
+                                                ${account.debit.toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-2">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">إجمالي الدائن:</label>
+                                            <span class="text-success fw-bold">
+                                                ${account.credit.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="detail-item">
+                                            <label class="fw-bold">الرصيد الإجمالي:</label>
+                                            <span class="${account.balance >= 0 ? 'text-success' : 'text-danger'} fw-bold">
+                                                ${account.balance.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
                                         <div class="detail-item">
                                             <label class="fw-bold">الرصيد الخاص:</label>
-                                            <span class="${(response.ownBalance || 0) >= 0 ? 'text-success' : 'text-danger'}">
-                                                ${(response.ownBalance || 0).toFixed(2)}
+                                            <span class="${account.ownBalance >= 0 ? 'text-success' : 'text-danger'}">
+                                                ${account.ownBalance.toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
@@ -1710,23 +1911,23 @@
                                     <div class="col-md-6">
                                         <div class="detail-item">
                                             <label class="fw-bold">الحساب الرئيسي:</label>
-                                            <span>${response.parentGlId || 'لا يوجد'}</span>
+                                            <span>${account.parentGlId || 'لا يوجد'}</span>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="detail-item">
                                             <label class="fw-bold">عدد الحسابات الفرعية:</label>
-                                            <span class="badge bg-warning">${response.childCount || 0}</span>
+                                            <span class="badge bg-warning">${account.childCount || 0}</span>
                                         </div>
                                     </div>
                                 </div>
-                                ${response.hasTransactions ?
+                                ${account.hasTransactions ?
                                     '<div class="alert alert-success"><i class="fas fa-check-circle"></i> يحتوي على معاملات</div>' :
                                     '<div class="alert alert-secondary"><i class="fas fa-info-circle"></i> لا يحتوي على معاملات مباشرة</div>'
                                 }
-                                ${response.children && response.children.length > 0 ?
+                                ${account.children && account.children.length > 0 ?
                                     `<div class="children-section">
-                                        <h6 class="fw-bold border-bottom pb-2">الحسابات الفرعية (${response.children.length})</h6>
+                                        <h6 class="fw-bold border-bottom pb-2">الحسابات الفرعية (${account.children.length})</h6>
                                         <div class="table-responsive">
                                             <table class="table table-sm">
                                                 <thead>
@@ -1737,12 +1938,12 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    ${response.children.map(child => `
+                                                    ${account.children.map(child => `
                                                         <tr>
-                                                            <td class="fw-bold">${child.glId}</td>
-                                                            <td>${child.glName}</td>
-                                                            <td class="${(child.balance || 0) >= 0 ? 'text-success' : 'text-danger'}">
-                                                                ${(child.balance || 0).toFixed(2)}
+                                                            <td class="fw-bold">${child.glId || child.GlId || 'N/A'}</td>
+                                                            <td>${child.glName || child.GlName || 'N/A'}</td>
+                                                            <td class="${Number(child.balance ?? child.Balance ?? 0) >= 0 ? 'text-success' : 'text-danger'}">
+                                                                ${Number(child.balance ?? child.Balance ?? 0).toFixed(2)}
                                                             </td>
                                                         </tr>
                                                     `).join('')}
@@ -1782,19 +1983,6 @@
                 });
             }
 
-            function filterAccounts() {
-                const searchText = $('#searchAccounts').val().toLowerCase();
-                $('#reportTable tbody tr').each(function() {
-                    const glId = $(this).find('td:eq(0)').text().toLowerCase();
-                    const glName = $(this).find('td:eq(1)').text().toLowerCase();
-                    if (glId.includes(searchText) || glName.includes(searchText)) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            }
-
             function showLoading() {
                 $('body').append(`
                     <div class="loading-overlay">
@@ -1811,3 +1999,4 @@
         });
     </script>
 }
+

@@ -1,81 +1,704 @@
-@model MinCoreBank.Models.GlTransactionsIndexViewModel
+﻿@model IEnumerable<MinCoreBank.Models.GlTransaction>
+
 @{
-    ViewData["Title"] = "إدارة قيود الاستاذ العام";
+    ViewData["Title"] = "إدارة حسابات الاستاذ العام";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Get pagination data from ViewBag
     int currentPage = ViewBag.CurrentPage ?? 1;
     int totalPages = ViewBag.TotalPages ?? 1;
     int totalCount = ViewBag.TotalCount ?? 0;
     int pageSize = ViewBag.PageSize ?? 10;
     string branchId = ViewBag.BranchId;
+    var userBranchCode = ViewBag.UserBranchCode as string;
+    decimal totalDebitToday = ViewBag.TotalDebitToday ?? 0m;
+    decimal totalCreditToday = ViewBag.TotalCreditToday ?? 0m;
+    bool isBalancedToday = ViewBag.IsBalancedToday ?? false;
+    decimal dailyDifference = ViewBag.DailyDifference ?? 0m;
 }
+
 <div class="banking-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-title"><i class="fas fa-exchange-alt me-2"></i>@ViewData["Title"]</h1>
-        <div class="d-flex gap-2">
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="fas fa-calendar-week me-1"></i>الفترة</button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="@Url.Action("Index", new { period = "today", page = 1, branchId })">اليوم</a></li>
-                    <li><a class="dropdown-item" href="@Url.Action("Index", new { period = "week", page = 1, branchId })">هذا الأسبوع</a></li>
-                    <li><a class="dropdown-item" href="@Url.Action("Index", new { period = "month", page = 1, branchId })">هذا الشهر</a></li>
-                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#periodModal">مخصص</button></li>
-                </ul>
-            </div>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#previewModal"><i class="fas fa-plus-circle me-2"></i>إنشاء قيد جديد</button>
-        </div>
+        <h1 class="page-title">
+            <i class="fas fa-exchange-alt fa-lg me-2"></i>@ViewData["Title"]
+        </h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#previewModal">
+            <i class="fas fa-plus-circle me-2"></i>انشاء قيد جديد
+        </button>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="banking-card"><div class="card-body"><div class="text-muted">إجمالي الدائن</div><div class="fs-4 fw-bold text-success">@Model.TotalCredit.ToString("N2")</div></div></div></div>
-        <div class="col-md-4"><div class="banking-card"><div class="card-body"><div class="text-muted">إجمالي المدين</div><div class="fs-4 fw-bold text-danger">@Model.TotalDebit.ToString("N2")</div></div></div></div>
-        <div class="col-md-4"><div class="banking-card"><div class="card-body"><div class="text-muted">حالة الميزانية</div><div class="fs-4 fw-bold">@Model.BalanceStatus</div></div></div></div>
+        <div class="col-lg-4 col-md-6">
+            <div class="banking-card summary-card h-100">
+                <div class="summary-card-body">
+                    <div class="summary-icon-wrap @(isBalancedToday ? "state-ok" : "state-warn")">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div class="summary-text">
+                        <p class="summary-label mb-1">حالة الحركة اليومية</p>
+                        <h5 class="summary-value mb-0 @(isBalancedToday ? "text-success" : "text-warning")">
+                            @(isBalancedToday ? "مطابق" : "غير مطابق")
+                        </h5>
+                        @if (!isBalancedToday)
+                        {
+                            <small class="summary-sub d-block mt-1">الفرق: @dailyDifference.ToString("N2")</small>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="banking-card summary-card h-100">
+                <div class="summary-card-body">
+                    <div class="summary-icon-wrap state-debit">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="summary-text">
+                        <p class="summary-label mb-1">إجمالي الحركة المدينة لهذا اليوم</p>
+                        <h5 class="summary-value mb-0 text-danger">@totalDebitToday.ToString("N2")</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-12">
+            <div class="banking-card summary-card h-100">
+                <div class="summary-card-body">
+                    <div class="summary-icon-wrap state-credit">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="summary-text">
+                        <p class="summary-label mb-1">إجمالي الحركة الدائنة لهذا اليوم</p>
+                        <h5 class="summary-value mb-0 text-success">@totalCreditToday.ToString("N2")</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="banking-card">
+    <!-- Transactions Table -->
+    <div class="banking-card transactions-card">
+        <div class="card-header">
+            <div class="search-toolbar">
+                <div class="input-group search-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="ابحث برقم المرجع أو الوصف...">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                </div>
+            </div>
+        </div>
+
         <div class="card-body">
-            <div class="d-flex justify-content-between mb-3"><p class="text-muted mb-0">عرض <strong>@Math.Min(pageSize, Model.Transactions.Count())</strong> من أصل <strong>@totalCount</strong> قيد</p><p class="text-muted mb-0">الصفحة <strong>@currentPage</strong> من <strong>@totalPages</strong></p></div>
-            <div class="table-responsive">
+            <!-- Pagination Info -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p class="text-muted">
+                        عرض <strong>@(Math.Min(pageSize, Model.Count()))</strong> من أصل <strong>@totalCount</strong> قيد
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="text-muted">
+                        الصفحة <strong>@currentPage</strong> من <strong>@totalPages</strong>
+                    </p>
+                </div>
+            </div>
+
+            <div class="table-responsive transactions-table-container">
                 <table class="table table-bordered table-hover banking-table" id="transactionsTable">
-                    <thead><tr><th>رقم الدليل</th><th>اسم الحساب</th><th>الحركة المدينة DR</th><th>الحركة الدائنة CR</th><th>تاريخ الإنشاء</th><th>الإجراءات</th></tr></thead>
-                    <tbody>
-                    @foreach (var transaction in Model.Transactions)
-                    {
+                    <thead class="table-dark">
                         <tr>
-                            <td>@transaction.GlId</td><td>@transaction.GlName</td><td>@transaction.DebitAccount</td><td>@transaction.CreditAccount</td><td>@transaction.CreatedAt?.ToString("yyyy-MM-dd HH:mm")</td>
-                            <td><a href="@Url.Action("Details", new { id = transaction.Id })" class="btn btn-sm btn-outline-info"><i class="fas fa-eye"></i></a></td>
+                            @* <th>رقم التعريف</th>*@
+                            <th>رقم الدليل</th>
+                            <th>اسم الحساب</th>
+                            <th>الحركة المدينة DR</th>
+                            <th>الحركة الدائنة CR</th>
+                            @* <th>المبلغ</th> *@
+                            @* <th>العملة</th> *@
+                            @*  <th>الوصف</th>*@
+                            @* <th>الحالة</th>*@
+                            <th>تاريخ الإنشاء</th>
+                            <th>الإجراءات</th>
                         </tr>
-                    }
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in Model)
+                        {
+                            <tr data-status="@transaction.Status?.ToLower()">
+                                @*  <td class="fw-bold">@transaction.TransactionRef</td>*@
+                                <td>@transaction.GlId</td>
+                                <td>@transaction.GlName</td>
+                                <td>@transaction.DebitAccount</td>
+                                <td>@transaction.CreditAccount</td>
+                                @*<td class="text-end">@transaction.Amount?.ToString("N2")</td>*@ 
+                                    @* <td>@transaction.Currency</td>*@
+                                @*  <td>@transaction.DescriptionAr</td>*@
+                                @*  <td>
+                                    <span class="badge @(transaction.Status == "completed" ? "bg-success" : "bg-warning")">
+                                        @(transaction.Status == "completed" ? "مكتمل" : "مرتجع")
+                                    </span>
+                                </td>*@
+                                <td>@transaction.CreatedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="@Url.Action("Details", "GlTransactionsView", new { id = transaction.Id })" class="btn btn-outline-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @*   @if (transaction.Status == "completed")
+                                        {
+                                            <a href="@Url.Action("Reverse", "GlTransactionsView", new { id = transaction.Id })" class="btn btn-outline-warning">
+                                                <i class="fas fa-undo"></i>
+                                            </a>
+                                        }*@
+                                        @if (transaction.CreatedAt?.ToUniversalTime().Date == DateTime.UtcNow.Date)
+                                        {
+                                            <a href="@Url.Action("Edit", "GlTransactionsView", new { id = transaction.Id })" class="btn btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            @if (totalPages > 1)
+            {
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        <!-- First Page -->
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = 1, branchId })">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+
+                        <!-- Previous Page -->
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, branchId })">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+
+                        <!-- Page Numbers -->
+                        @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { page = i, branchId })">@i</a>
+                            </li>
+                        }
+
+                        <!-- Next Page -->
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, branchId })">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+
+                        <!-- Last Page -->
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = totalPages, branchId })">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">لا توجد معاملات مسجلة</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade preview-modal" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title fs-6" id="previewModalLabel">
+                    <i class="fas fa-plus-circle me-1"></i>إنشاء قيد جديد
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <form id="createTransactionForm" class="row g-2">
+                   
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label for="GlId" class="form-label small mb-1">رقم الاستاذ العام <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm glid-select" id="GlId" name="GlId" required>
+                                <option value="">اختر رقم الاستاذ</option>
+                                @if (ViewBag.GlAccounts != null)
+                                {
+                                    foreach (var account in ViewBag.GlAccounts as IEnumerable<MinCoreBank.Models.GeneralLedgerAccount>)
+                                    {
+                                        <option value="@account.Id" data-name-ar="@account.NameAr">@account.Id - @account.NameAr</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label for="GlName" class="form-label small mb-1">اسم الاستاذ العام</label>
+                            <input type="text" class="form-control form-control-sm" id="GlName" name="GlName" readonly>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="Date" name="Date">
+                    <input type="hidden" id="ValueDate" name="ValueDate">
+                    <input type="hidden" id="Currency" name="Currency" value="IQD">
+
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label for="DebitAccount" class="form-label small mb-1">حركة مدينة <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="DebitAccount" name="DebitAccount" required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label for="CreditAccount" class="form-label small mb-1">حركة دائنة <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="CreditAccount" name="CreditAccount" required>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="mb-2">
+                            <label for="DescriptionAr" class="form-label small mb-1">شرح القيد</label>
+                            <textarea class="form-control form-control-sm" id="DescriptionAr" name="DescriptionAr" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-primary btn-sm" id="submitTransaction">
+                    <i class="fas fa-save me-1"></i>حفظ القيد
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>إلغاء
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="periodModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">فترة مخصصة</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form method="get"><input type="hidden" name="period" value="custom"/><input type="hidden" name="branchId" value="@branchId"/><div class="mb-2"><label class="form-label">من</label><input type="date" class="form-control" name="from" required></div><div class="mb-2"><label class="form-label">إلى</label><input type="date" class="form-control" name="to" required></div><button class="btn btn-primary">تطبيق</button></form></div></div></div></div>
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .transaction-amount {
+            font-weight: 600;
+        }
 
-<div class="modal fade preview-modal" id="previewModal" tabindex="-1" dir="rtl">
-    <div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2"><h5 class="modal-title fs-6"><i class="fas fa-plus-circle me-1"></i>إنشاء قيد جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body p-3"><form id="createTransactionForm" class="row g-2">
-            <div class="col-md-6"><label for="GlIdInput" class="form-label small mb-1">رقم الاستاذ العام <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="GlIdInput" name="GlId" inputmode="numeric" required><div class="invalid-feedback" id="glIdValidation">رقم الأستاذ العام غير موجود.</div></div>
-            <div class="col-md-6"><label for="GlName" class="form-label small mb-1">اسم الاستاذ العام</label><input type="text" class="form-control form-control-sm" id="GlName" name="GlName" readonly></div>
-            <input type="hidden" id="Date" name="Date"><input type="hidden" id="ValueDate" name="ValueDate"><input type="hidden" id="Currency" name="Currency" value="IQD">
-            <div class="col-md-6"><label for="DebitAccount" class="form-label small mb-1">الحساب المدين <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" id="DebitAccount" name="DebitAccount" required></div>
-            <div class="col-md-6"><label for="CreditAccount" class="form-label small mb-1">الحساب الدائن <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" id="CreditAccount" name="CreditAccount" required></div>
-            <div class="col-12"><label for="DescriptionAr" class="form-label small mb-1">الوصف</label><textarea class="form-control form-control-sm" id="DescriptionAr" name="DescriptionAr" rows="2"></textarea></div>
-        </form></div>
-        <div class="modal-footer py-2"><button type="button" class="btn btn-primary btn-sm" id="submitTransaction"><i class="fas fa-save me-1"></i>حفظ القيد</button><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button></div>
-    </div></div>
-</div>
+        .debit-amount {
+            color: #dc3545;
+        }
+
+        .credit-amount {
+            color: #198754;
+        }
+
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: auto;
+            min-width: 0;
+        }
+
+        .transactions-card {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            contain: layout paint;
+        }
+
+        .transactions-table-container {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow-x: auto !important;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .transactions-table-container #transactionsTable {
+            width: max-content;
+            min-width: 980px;
+            margin-bottom: 0;
+        }
+
+        .pagination {
+            margin: 20px 0 0 0;
+        }
+
+        .page-link {
+            color: #1a3a6c;
+            border: 1px solid #dee2e6;
+        }
+
+        .page-item.active .page-link {
+            background-color: #1a3a6c;
+            border-color: #1a3a6c;
+            color: white;
+        }
+
+        .page-link:hover {
+            color: #1a3a6c;
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+
+        .preview-modal .modal-content {
+            border-radius: 10px;
+        }
+
+        .preview-modal .modal-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .search-toolbar {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .search-group {
+            width: min(520px, 100%);
+        }
+
+        .summary-card {
+            border: 1px solid var(--line);
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+            border-radius: 14px;
+            transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card-body {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px;
+            min-height: 128px;
+        }
+
+        .summary-card::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -120%;
+            width: 85%;
+            height: 100%;
+            background: linear-gradient(110deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .34) 45%, rgba(255, 255, 255, 0) 100%);
+            transition: right .35s ease;
+            pointer-events: none;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            border-color: #b8cbe8;
+            box-shadow: 0 18px 32px rgba(11, 43, 87, 0.16);
+        }
+
+        .summary-card:hover::after {
+            right: 130%;
+        }
+
+        .summary-card:hover .summary-icon-wrap {
+            transform: scale(1.06);
+            box-shadow: 0 8px 18px rgba(15, 43, 81, 0.14);
+        }
+
+        .summary-icon-wrap {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            border: 1px solid transparent;
+            transition: transform .22s ease, box-shadow .22s ease;
+        }
+
+        .summary-icon-wrap.state-ok {
+            color: #198754;
+            background: rgba(25, 135, 84, 0.12);
+            border-color: rgba(25, 135, 84, 0.25);
+        }
+
+        .summary-icon-wrap.state-warn {
+            color: #d39e00;
+            background: rgba(211, 158, 0, 0.14);
+            border-color: rgba(211, 158, 0, 0.28);
+        }
+
+        .summary-icon-wrap.state-debit {
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.12);
+            border-color: rgba(220, 53, 69, 0.24);
+        }
+
+        .summary-icon-wrap.state-credit {
+            color: #198754;
+            background: rgba(25, 135, 84, 0.12);
+            border-color: rgba(25, 135, 84, 0.25);
+        }
+
+        .summary-text {
+            min-width: 0;
+        }
+
+        .summary-value {
+            font-weight: 800;
+            font-size: 1.45rem;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+
+        .summary-label {
+            color: var(--muted);
+            font-weight: 700;
+            font-size: .95rem;
+        }
+
+        .summary-sub {
+            color: var(--muted);
+            font-weight: 600;
+            font-size: .85rem;
+        }
+
+        @@media (max-width: 768px) {
+            .summary-card-body {
+                min-height: 112px;
+                padding: 14px;
+            }
+        }
+
+        .banking-table th {
+            background-color: #1a3a6c;
+            border-color: #1a3a6c;
+            color: white;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            height: 31px;
+            border: 1px solid #d1d9e6;
+            border-radius: .5rem;
+            display: flex;
+            align-items: center;
+            background: #fff;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 29px;
+            padding-right: .65rem;
+            padding-left: 2rem;
+            font-size: .875rem;
+            color: #1c2a3b;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 29px;
+            left: 6px;
+            right: auto;
+        }
+
+        .select2-container--default.select2-container--open .select2-selection--single,
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #315c9b;
+            box-shadow: 0 0 0 .25rem rgba(49, 92, 155, .18);
+        }
+
+        .select2-dropdown {
+            border: 1px solid #d1d9e6;
+            border-radius: .5rem;
+            overflow: hidden;
+        }
+
+        .select2-search--dropdown .select2-search__field {
+            border: 1px solid #d1d9e6;
+            border-radius: .4rem;
+            font-size: .875rem;
+        }
+
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: #315c9b;
+        }
+    </style>
+}
 
 @section Scripts {
-<script>
-$(function () {
- const today = new Date().toISOString().split('T')[0]; $('#Date').val(today); $('#ValueDate').val(today);
- async function lookupGl(){const id=$('#GlIdInput').val().trim(); if(!id){return false;} try{const r=await fetch(`/api/gltransactionsview/account/${id}`); if(!r.ok) throw new Error(); const d=await r.json(); $('#GlName').val(d.nameAr); $('#GlIdInput').removeClass('is-invalid'); return true;}catch{ $('#GlName').val(''); $('#GlIdInput').addClass('is-invalid').focus(); return false;}}
- $('#GlIdInput').on('keydown', async function(e){ if(e.key==='Enter'){e.preventDefault(); await lookupGl();}});
- $('#submitTransaction').on('click', async function(){ if(!await lookupGl()) return; const formData={GlName:$('#GlName').val(),GlId:$('#GlIdInput').val(),Date:$('#Date').val(),ValueDate:$('#Date').val(),DebitAccount:$('#DebitAccount').val(),CreditAccount:$('#CreditAccount').val(),Amount:0.01,Currency:'IQD',FxRate:1.0,DescriptionAr:$('#DescriptionAr').val(),DescriptionEn:'',BranchId:'@ViewBag.UserBranchCode',CbiCode:''};
- $.ajax({url:'/api/GlTransactions/createtrans',type:'POST',contentType:'application/json',data:JSON.stringify(formData),success:function(){alert('تم إنشاء القيد بنجاح!');location.reload();},error:function(){alert('حدث خطأ أثناء إنشاء القيد.');}});
- });
-});
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const $glId = $('#GlId');
+            const getGlName = () => {
+                const selectedOption = $glId.find('option:selected');
+                return selectedOption.data('name-ar') || '';
+            };
+
+            // Searchable GL dropdown (RTL) with typed ID support.
+            $glId.select2({
+                dir: 'rtl',
+                width: '100%',
+                dropdownParent: $('#previewModal'),
+                placeholder: 'اختر رقم الاستاذ أو اكتب الرقم',
+                allowClear: true
+            });
+
+            // Clear form when modal is closed
+            $('#previewModal').on('hidden.bs.modal', function () {
+                $('#createTransactionForm')[0].reset();
+                $('#Date').val(new Date().toISOString().split('T')[0]);
+                $('#ValueDate').val(new Date().toISOString().split('T')[0]);
+                $('#Currency').val('IQD');
+                $glId.val(null).trigger('change');
+                $('#GlName').val('');
+            });
+
+            // Search functionality
+            $('#searchButton').on('click', filterTable);
+            $('#searchInput').on('keyup', filterTable);
+
+            // Preview Modal functionality
+            const today = new Date().toISOString().split('T')[0];
+            $('#Date').val(today);
+            $('#ValueDate').val(today);
+            $('#Currency').val('IQD');
+
+            // Generate transaction reference
+                    $('#generateRef').on('click', function() {
+           // const branchId = '@ViewBag.BranchId'; // Get from C# ViewBag
+          //  const ref = 'AG' + branchId + Date.now().toString().substr(-9);
+          //  $('#TransactionRef').val(ref);
+        });
+
+            // Auto-fill GL Name when GL ID is selected
+            $glId.on('change', function() {
+                $('#GlName').val(getGlName());
+            });
+
+            // Keep Enter behavior: if user types a valid GL ID and presses Enter, auto-select it.
+            $(document).on('keydown', '.select2-container--open .select2-search__field', function(e) {
+                if (e.key !== 'Enter') return;
+
+                const typed = ($(this).val() || '').trim();
+                if (!typed) return;
+
+                const $validOptions = $glId.find('option').filter(function() {
+                    return $(this).val() !== '';
+                });
+
+                const $exact = $validOptions.filter(function() {
+                    return String($(this).val()) === typed;
+                }).first();
+
+                if ($exact.length) {
+                    e.preventDefault();
+                    $glId.val($exact.val()).trigger('change').select2('close');
+                    return;
+                }
+
+                const $startsWith = $validOptions.filter(function() {
+                    return String($(this).val()).startsWith(typed);
+                }).first();
+
+                if ($startsWith.length) {
+                    e.preventDefault();
+                    $glId.val($startsWith.val()).trigger('change').select2('close');
+                }
+            });
+
+            // Handle form submission from modal
+            $('#submitTransaction').on('click', function() {
+                const glId = $glId.val();
+                const glName = $('#GlName').val() || getGlName();
+
+                if (!glId) {
+                    alert('يرجى اختيار رقم الاستاذ العام');
+                    return;
+                }
+
+                const formData = {
+                    TransactionRef: $('#TransactionRef').val(),
+                    GlName: glName,
+                    GlId: glId,
+                    Date: $('#Date').val(),
+                    ValueDate: $('#Date').val(),
+                    DebitAccount: $('#DebitAccount').val(),
+                    CreditAccount: $('#CreditAccount').val(),
+                    Amount: 0.01,
+                    Currency: 'IQD',
+                    FxRate: 0,
+                    DescriptionAr: $('#DescriptionAr').val(),
+                    DescriptionEn: '',
+                    BranchId: '@ViewBag.UserBranchCode',
+                    CbiCode: ''
+                };
+
+                console.log('Sending data:', formData);
+
+                $.ajax({
+                    url: '/api/GlTransactions/createtrans',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('تم إنشاء القيد بنجاح!');
+                        $('#previewModal').modal('hide');
+                        window.location.reload(); // Reload the page to show the new transaction
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr);
+
+                        let errorMessage = 'حدث خطأ أثناء إنشاء القيد. يرجى المحاولة مرة أخرى.';
+
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            const errors = Object.values(xhr.responseJSON.errors).flat();
+                            errorMessage = 'أخطاء في البيانات:\n' + errors.join('\n');
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        } else if (xhr.status === 400) {
+                            errorMessage = 'بيانات غير صحيحة. يرجى التحقق من المدخلات.';
+                        }
+
+                        alert(errorMessage);
+                    }
+                });
+            });
+
+            function filterTable() {
+                const searchText = $('#searchInput').val().toLowerCase();
+                $('#transactionsTable tbody tr').each(function() {
+                    const ref = $(this).find('td:eq(0)').text().toLowerCase();
+                    const desc = $(this).find('td:eq(6)').text().toLowerCase();
+                    if (ref.includes(searchText) || desc.includes(searchText)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+        });
+    </script>
 }

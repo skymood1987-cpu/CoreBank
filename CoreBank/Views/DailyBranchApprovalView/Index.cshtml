@@ -1,6 +1,6 @@
 ﻿@model MinCoreBank.Models.ViewModels.DailyBranchApprovalViewModel
 @{
-    ViewData["Title"] = "موافقة الفرع اليومية";
+    ViewData["Title"] = "إجراءات نهاية اليوم";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -9,49 +9,6 @@
         <h1 class="page-title">
             <i class="fas fa-check-circle fa-lg me-2"></i>@ViewData["Title"]
         </h1>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-code-branch fa-2x text-primary mb-2"></i>
-                    <h4 class="text-primary">@Model.BranchId</h4>
-                    <p class="text-muted mb-0">الفرع</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-arrow-up fa-2x text-success mb-2"></i>
-                    <h4 class="text-success">@Model.TotalCredit.ToString("N2")</h4>
-                    <p class="text-muted mb-0">إجمالي الدائن</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-arrow-down fa-2x text-danger mb-2"></i>
-                    <h4 class="text-danger">@Model.TotalDebit.ToString("N2")</h4>
-                    <p class="text-muted mb-0">إجمالي المدين</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="banking-card summary-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-balance-scale fa-2x @(Model.IsBalanced ? "text-success" : "text-warning") mb-2"></i>
-                    <h4 class="@(Model.IsBalanced ? "text-success" : "text-warning")">@(Model.IsBalanced ? "متوازنة" : "غير متوازنة")</h4>
-                    <p class="text-muted mb-0">حالة الميزانية</p>
-                    @if (!Model.IsBalanced)
-                    {
-                        <small class="text-danger">الفرق: @Model.Difference.ToString("N2")</small>
-                    }
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="banking-card mb-4">
@@ -120,17 +77,25 @@
     </div>
 </div>
 
-    <!-- Quick Balance Check --
-
-<!-- Notes Modal -->
+<!-- Manager Approval Modal -->
 <div class="modal fade" id="notesModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">إضافة ملاحظات للموافقة</h5>
+                <h5 class="modal-title">اعتماد المدير - موافقة وقفل الفرع</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                @Html.AntiForgeryToken()
+                <div id="approvalCredentialError" class="alert alert-danger d-none py-2 mb-3"></div>
+                <div class="mb-3">
+                    <label for="managerUsername" class="form-label">اسم المستخدم (المدير)</label>
+                    <input type="text" id="managerUsername" class="form-control" placeholder="أدخل اسم المستخدم للمدير">
+                </div>
+                <div class="mb-3">
+                    <label for="managerPassword" class="form-label">كلمة المرور</label>
+                    <input type="password" id="managerPassword" class="form-control" placeholder="أدخل كلمة المرور">
+                </div>
                 <textarea id="approvalNotes" class="form-control" rows="4" placeholder="أدخل أي ملاحظات إضافية (اختياري)..."></textarea>
             </div>
             <div class="modal-footer">
@@ -144,97 +109,38 @@
 @section Styles {
     <style>
         .banking-container {
-            padding: 20px;
+            padding: 8px;
         }
 
         .page-title {
-            color: #1a3a6c;
+            color: var(--ink);
             font-weight: 700;
-            font-size: 1.8rem;
+            font-size: 1.55rem;
         }
 
         .banking-card {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
+            background: var(--panel);
+            border-radius: 14px;
+            box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08);
+            margin-bottom: 16px;
+            border: 1px solid var(--line);
         }
 
-            /* Card Header - EXACT SAME as Index page */
-            .banking-card .card-header {
-                background-color: #f8f9fa;
-                border-bottom: 2px solid #e9ecef;
-                padding: 1rem 1.5rem;
-                font-weight: 600;
-                border-radius: 10px 10px 0 0 !important;
-            }
+        .banking-card .card-header {
+            background-color: #f8fbff;
+            border-bottom: 1px solid var(--line);
+            padding: 1rem 1.25rem;
+            font-weight: 700;
+            border-radius: 14px 14px 0 0 !important;
+        }
 
-                .banking-card .card-header h5 {
-                    margin: 0;
-                    font-weight: 600;
-                    color: #1a3a6c;
-                }
+        .banking-card .card-header h5 {
+            margin: 0;
+            color: var(--ink);
+        }
 
         .card-body {
-            padding: 25px;
-        }
-
-        /* Summary Cards - EXACT SAME as Index page */
-        .summary-card {
-            transition: transform 0.2s;
-            border-left: 4px solid #1a3a6c;
-            height: 100%;
-            display: flex;
-            align-items: center;
-        }
-
-            .summary-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            }
-
-            .summary-card .card-body {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                width: 100%;
-                padding: 1.5rem 1rem;
-            }
-
-            /* Center the icon - EXACT SAME SIZE as Index */
-            .summary-card .fa-2x {
-                display: block;
-                margin: 0 auto 0.75rem auto;
-                font-size: 2em !important;
-            }
-
-            /* Center the amount - EXACT SAME SIZE as Index */
-            .summary-card h4 {
-                text-align: center;
-                margin: 0.5rem 0;
-                width: 100%;
-                font-size: 1.5rem !important;
-                font-weight: 400;
-            }
-
-            /* Center the label - EXACT SAME SIZE as Index */
-            .summary-card p {
-                text-align: center;
-                margin: 0;
-                width: 100%;
-                font-size: 1rem !important;
-                color: #6c757d !important;
-            }
-
-        .bg-light {
-            background-color: #f8f9fa !important;
-        }
-
-        .border.rounded {
-            border: 1px solid #dee2e6 !important;
+            padding: 20px;
         }
 
         .btn-lg {
@@ -245,43 +151,31 @@
 
         .alert {
             border-radius: 8px;
-            border: none;
+            border: 1px solid var(--line);
             padding: 15px 20px;
         }
 
         .alert-success {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #eef8f2;
+            color: #14613d;
         }
 
         .alert-warning {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: #fff8ea;
+            color: #7d4f10;
         }
 
         .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
+            background-color: #edf3ff;
+            color: #173d76;
         }
 
         .text-muted {
-            color: #6c757d !important;
+            color: var(--muted) !important;
         }
 
         .text-primary {
-            color: #1a3a6c !important;
-        }
-
-        .text-success {
-            color: #198754 !important;
-        }
-
-        .text-danger {
-            color: #dc3545 !important;
-        }
-
-        .text-warning {
-            color: #ffc107 !important;
+            color: var(--brand) !important;
         }
 
         .btn-success:disabled {
@@ -291,7 +185,7 @@
         }
 
         .modal-header {
-            background: #1a3a6c;
+            background: #123c78;
             color: white;
         }
 
@@ -309,7 +203,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.88);
             z-index: 9999;
             display: flex;
             flex-direction: column;
@@ -320,7 +214,7 @@
 
         /* Print styles */
         @@media print {
-            .btn, .modal-footer, .alert, .summary-card {
+            .btn, .modal-footer, .alert {
                 display: none !important;
             }
 
@@ -339,6 +233,12 @@
                 border: 1px solid #000 !important;
             }
         }
+            .banking-container { padding: 8px !important; }
+        .page-title { color: var(--ink) !important; font-size: 1.55rem !important; font-weight: 800 !important; }
+        .banking-card { background: var(--panel) !important; border: 1px solid var(--line) !important; border-radius: 14px !important; box-shadow: 0 12px 24px rgba(10, 37, 74, 0.08) !important; }
+        .banking-card .card-header { background: #f8fbff !important; border-bottom: 1px solid var(--line) !important; }
+        .btn-primary { background: linear-gradient(90deg, var(--brand), var(--brand-2)) !important; border-color: var(--brand) !important; }
+        .btn-primary:hover { background: linear-gradient(90deg, #164989, #0f356f) !important; border-color: #164989 !important; }
     </style>
 }
 @section Scripts {
@@ -350,33 +250,49 @@
 
         function confirmApproval() {
             const notes = $('#approvalNotes').val();
+            const managerUsername = $('#managerUsername').val().trim();
+            const managerPassword = $('#managerPassword').val();
+            const token = document.querySelector('input[name=\"__RequestVerificationToken\"]')?.value;
+
+            clearCredentialError();
+
+            if (!managerUsername || !managerPassword) {
+                showCredentialError('يرجى إدخال اسم المستخدم وكلمة المرور للمدير');
+                return;
+            }
+
             showLoading('جاري الموافقة على الفرع...');
 
             fetch('/DailyBranchApprovals/ApproveToday', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'RequestVerificationToken': token || ''
                 },
-                body: JSON.stringify({ notes: notes })
+                body: JSON.stringify({
+                    notes: notes,
+                    managerUsername: managerUsername,
+                    managerPassword: managerPassword
+                })
             })
             .then(response => response.json())
             .then(data => {
                 hideLoading();
-                $('#notesModal').modal('hide');
 
                 if (data.success) {
+                    $('#notesModal').modal('hide');
                     showSuccess(data.message);
                     setTimeout(() => {
                         location.reload();
                     }, 2000);
                 } else {
-                    showError(data.message);
+                    showCredentialError(data.message || 'تعذر التحقق من بيانات المدير');
                 }
             })
             .catch(error => {
                 hideLoading();
                 console.error('Error:', error);
-                showError('حدث خطأ أثناء الموافقة على الفرع');
+                showCredentialError('حدث خطأ أثناء الموافقة على الفرع');
             });
         }
 
@@ -389,7 +305,7 @@
                 hideLoading();
                 const balanceResult = document.getElementById('balanceResult');
                 const isBalanced = @Model.IsBalanced.ToString().ToLower();
-                const statusText = isBalanced ? "متوازنة" : "غير متوازنة";
+                const statusText = isBalanced ? "مطابق" : "غير مطابق";
                 const statusClass = isBalanced ? "text-success" : "text-danger";
 
                 let differenceHtml = '';
@@ -404,7 +320,7 @@
                         <strong>بيانات الرصيد المحدثة:</strong><br>
                         إجمالي الدائن: <strong>@Model.TotalCredit.ToString("N2")</strong> |
                         إجمالي المدين: <strong>@Model.TotalDebit.ToString("N2")</strong> |
-                        الحالة: <strong class="${statusClass}">${statusText}</strong>
+                        حالة الحركة اليومية: <strong class="${statusClass}">${statusText}</strong>
                         ${differenceHtml}
                     </div>
                 `;
@@ -456,12 +372,24 @@
             });
         }
 
+        function showCredentialError(message) {
+            const box = $('#approvalCredentialError');
+            box.text(message).removeClass('d-none');
+        }
+
+        function clearCredentialError() {
+            $('#approvalCredentialError').addClass('d-none').text('');
+        }
+
         $('#notesModal').on('shown.bs.modal', function () {
-            $('#approvalNotes').focus();
+            $('#managerUsername').focus();
         });
 
         $('#notesModal').on('hidden.bs.modal', function () {
             $('#approvalNotes').val('');
+            $('#managerUsername').val('');
+            $('#managerPassword').val('');
+            clearCredentialError();
         });
 
         // Initialize button state
@@ -473,3 +401,4 @@
         });
     </script>
 }
+

@@ -42,7 +42,16 @@ namespace MinCoreBank.Controllers.Auth
             // If user is already authenticated, redirect to home
             if (User.Identity.IsAuthenticated)
             {
-                return RedirectToAction("Index", "GlTransactionsView");
+                var mustChangePassword = User.FindFirst("MustChangePassword")?.Value;
+                var limitedAccess = User.FindFirst("LimitedAccess")?.Value;
+
+                if (string.Equals(mustChangePassword, "true", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(limitedAccess, "password-change-only", StringComparison.OrdinalIgnoreCase))
+                {
+                    return RedirectToAction("ChangePassword", "AuthView");
+                }
+
+                return RedirectToAction("Index", "Dashboard");
             }
             return View();
         }

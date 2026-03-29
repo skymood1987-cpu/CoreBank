@@ -18,5 +18,7 @@ namespace MinCoreBank.Models.ViewModels
     public class DailyApprovalRequest
     {
         public string? Notes { get; set; }
+        public string? ManagerUsername { get; set; }
+        public string? ManagerPassword { get; set; }
     }
 }

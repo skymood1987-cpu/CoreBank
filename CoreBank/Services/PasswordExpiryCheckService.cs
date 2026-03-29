@@ -7,6 +7,7 @@ namespace MinCoreBank.Services
 {
     public class PasswordExpiryCheckService : IHostedService, IDisposable
     {
+        private const int PasswordExpiryDays = 30;
         private readonly ILogger<PasswordExpiryCheckService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private Timer? _timer;
@@ -45,7 +46,7 @@ namespace MinCoreBank.Services
                     {
                         foreach (var user in result.Data)
                         {
-                            var daysUntilExpiry = (user.LastPasswordChange.AddDays(90) - DateTime.UtcNow).Days;
+                            var daysUntilExpiry = (user.LastPasswordChange.AddDays(PasswordExpiryDays) - DateTime.UtcNow).Days;
 
                             if (daysUntilExpiry <= 7 && daysUntilExpiry > 0)
                             {
