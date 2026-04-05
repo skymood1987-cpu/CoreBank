@@ -11,7 +11,7 @@
     var h = 240m;
     var px = 44m;
     var pyTop = 18m;
-    var pyBottom = 36m;
+    var pyBottom = 56m;
     var plotW = w - (2 * px);
     var plotH = h - pyTop - pyBottom;
     var step = n > 1 ? (plotW / (n - 1)) : 0m;
@@ -65,6 +65,29 @@
 
     var linePath = BuildSmoothLinePath(chartPoints);
     var areaPath = BuildAreaPath(chartPoints);
+
+    string FormatThreeDecimals(decimal value)
+    {
+        var truncated = decimal.Truncate(value * 1000m) / 1000m;
+        return truncated.ToString("N3");
+    }
+
+    string FormatDifferenceWithDrCr(decimal value)
+    {
+        var truncated = decimal.Truncate(value * 1000m) / 1000m;
+
+        if (truncated < 0)
+        {
+            return $"{Math.Abs(truncated).ToString("N3")} DR";
+        }
+
+        if (truncated > 0)
+        {
+            return $"{truncated.ToString("N3")} CR";
+        }
+
+        return truncated.ToString("N3");
+    }
 }
 
 @section Styles {
@@ -222,7 +245,7 @@
 
 <div class="dashboard-wrap">
     <section class="dashboard-head">
-        <h2 class="dashboard-title">ملخص يوم العمل - الأستاذ العام</h2>
+        <h2 class="dashboard-title">ملخص يوم العمل - دفتر الأستاذ العام</h2>
         <p class="dashboard-subtitle">
             الفرع: @(string.IsNullOrWhiteSpace(Model.BranchId) ? "-" : Model.BranchId)
             <span class="mx-1">|</span>
@@ -235,7 +258,7 @@
         {
         <article class="chart-card">
             <h3 class="chart-title">نسبة حركة اليوم</h3>
-            <p class="chart-subtitle">توزيع المدين والدائن</p>
+            <p class="chart-subtitle">توزيع حركات المدين والدائن</p>
             <div class="ratio-ring" style="--value:@debitShare.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
                 <div class="ratio-center">@debitShare.ToString("0.#")%</div>
             </div>
@@ -281,15 +304,18 @@
                         var p = Model.DailyTransactionCounts[i];
                         var x = px + (step * i);
                         var y = pyTop + (plotH - ((decimal)p.Count / maxCount) * plotH);
-                        var valueLabelY = y <= (pyTop + 16) ? (y + 14) : (y - 10);
+                        var valueLabelY = y <= (pyTop + 16)
+                            ? (y + 14)
+                            : (p.Count == 0 ? (y - 12) : (y - 10));
                         var delay = $"{(i * 0.12m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}s";
-                        <circle class="line-dot-halo" cx="@x" cy="@y" r="8" style="animation-delay:@delay"></circle>
-                        <circle class="line-dot" cx="@x" cy="@y" r="4"></circle>
-                        @if (p.Count > 0)
-                        {
-                            <svg:text class="line-v" x="@x" y="@valueLabelY">@p.Count</svg:text>
-                        }
-                        <svg:text class="line-x" x="@x" y="@(h - 14)">@p.Date.ToString("dd/MM", arCulture)</svg:text>
+                        <circle class="line-dot-halo" cx="@x" cy="@y" r="8" style="animation-delay:@delay">
+                            <title>@($"{p.Date:yyyy/MM/dd} - عدد القيود: {p.Count}")</title>
+                        </circle>
+                        <circle class="line-dot" cx="@x" cy="@y" r="4">
+                            <title>@($"{p.Date:yyyy/MM/dd} - عدد القيود: {p.Count}")</title>
+                        </circle>
+                        <svg:text class="line-v" x="@x" y="@valueLabelY">@p.Count</svg:text>
+                        <svg:text class="line-x" x="@x" y="@(h - 26)">@p.Date.ToString("dd/MM", arCulture)</svg:text>
                     }
                     <svg:text class="line-y-title" x="18" y="@(pyTop + (plotH / 2))" transform="rotate(-90 18 @(pyTop + (plotH / 2)))">عدد القيود</svg:text>
                 </svg>
@@ -307,13 +333,13 @@
     {
     <section class="metric-grid">
         <article class="metric-card">
-            <div class="metric-head"><h3 class="metric-name">إجمالي الدائن اليومي</h3><span class="metric-icon"><i class="fas fa-arrow-up"></i></span></div>
-            <p class="metric-value">@Model.TotalCreditToday.ToString("N2")</p>
+            <div class="metric-head"><h3 class="metric-name">إجمالي الحركات الدائنة</h3><span class="metric-icon"><i class="fas fa-arrow-up"></i></span></div>
+            <p class="metric-value">@FormatThreeDecimals(Model.TotalCreditToday)</p>
             <p class="metric-meta">دينار عراقي</p>
         </article>
         <article class="metric-card">
-            <div class="metric-head"><h3 class="metric-name">إجمالي المدين اليومي</h3><span class="metric-icon"><i class="fas fa-arrow-down"></i></span></div>
-            <p class="metric-value">@Model.TotalDebitToday.ToString("N2")</p>
+                <div class="metric-head"><h3 class="metric-name">إجمالي الحركات المدينة</h3><span class="metric-icon"><i class="fas fa-arrow-down"></i></span></div>
+            <p class="metric-value">@FormatThreeDecimals(Model.TotalDebitToday)</p>
             <p class="metric-meta">دينار عراقي</p>
         </article>
         <article class="metric-card">
@@ -332,10 +358,9 @@
     </section>
 
     <section class="summary-bar">
-        <span class="summary-item">فرق الميزان اليومي: <small>@Model.DailyDifference.ToString("N2") دينار</small></span>
+        <span class="summary-item">فرق الميزان اليومي: <small><span dir="ltr" style="display:inline-block;">@FormatDifferenceWithDrCr(Model.DailyDifference)</span> دينار</small></span>
         <span class="summary-item">حالة الميزان: <small>@(Model.IsBalanced ? "مطابق" : "غير مطابق")</small></span>
-        <span class="summary-item">متوسط قيمة القيد: <small>@Model.AvgTransactionValueToday.ToString("N2") دينار</small></span>
-        <span class="summary-item">نسبة القيود المعكوسة: <small>@Math.Max(0m, 100m - Model.CompletionRateToday).ToString("0.##")%</small></span>
+        <span class="summary-item">متوسط قيمة القيد: <small>@FormatThreeDecimals(Model.AvgTransactionValueToday) دينار</small></span>
     </section>
     }
 </div>

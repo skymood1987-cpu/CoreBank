@@ -150,6 +150,10 @@
             font-weight: 700;
             letter-spacing: .2px;
         }
+        .app-version span {
+            display: block;
+            margin-top: 4px;
+        }
 
         .menu-link {
             text-decoration: none;
@@ -353,6 +357,7 @@
     @{
         var currentController = ViewContext.RouteData.Values["Controller"]?.ToString() ?? "";
         var appVersion = Configuration["AppInfo:Version"] ?? "1.0.0";
+        var lastVersionDate = Configuration["AppInfo:LastVersionDate"] ?? "-";
     }
     <div class="shell">
         <aside class="sidebar">
@@ -381,7 +386,7 @@
                 @if (User.IsInRole("admin"))
                 {
                     <a class="menu-link @(currentController == "GeneralLedgerView" ? "active" : "")" href="@Url.Action("Index", "GeneralLedgerView")">
-                        <i class="fas fa-book"></i><span>إدارة تفاصيل حسابات الأستاذ العام</span>
+                        <i class="fas fa-book"></i><span>إدارة تفاصيل الأستاذ العام</span>
                     </a>
                     <a class="menu-link @(currentController == "UsersView" ? "active" : "")" href="@Url.Action("Index", "UsersView")">
                         <i class="fas fa-users"></i><span>إدارة المستخدمين النهائيين</span>
@@ -397,7 +402,10 @@
                     <i class="fas fa-right-from-bracket"></i><span>تسجيل الخروج</span>
                 </a>
             </nav>
-            <div class="app-version">الإصدار @appVersion</div>
+            <div class="app-version">
+                <span>الإصدار @appVersion</span>
+                <span>تاريخ آخر نسخة @lastVersionDate</span>
+            </div>
         </aside>
 
         <main class="content">

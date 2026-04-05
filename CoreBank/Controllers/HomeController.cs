@@ -43,7 +43,11 @@ namespace MinCoreBank.Controllers
 
                 model.TotalDebitToday = await todayTransactions.SumAsync(t => t.DebitAccount ?? 0m);
                 model.TotalCreditToday = await todayTransactions.SumAsync(t => t.CreditAccount ?? 0m);
-                model.TransactionsCountToday = await todayTransactions.CountAsync();
+                model.TransactionsCountToday = await todayTransactions
+                    .Select(t => t.TransactionRef != null ? t.TransactionRef.Trim() : null)
+                    .Where(r => !string.IsNullOrWhiteSpace(r))
+                    .Distinct()
+                    .CountAsync();
                 model.DailyDifference = model.TotalCreditToday - model.TotalDebitToday;
                 model.DailyMovementAmount = Math.Max(model.TotalDebitToday, model.TotalCreditToday);
 
@@ -109,7 +113,15 @@ namespace MinCoreBank.Controllers
                         t.Date.Value.Date <= today &&
                         t.Status == "completed")
                     .GroupBy(t => t.Date!.Value.Date)
-                    .Select(g => new { Date = g.Key, Count = g.Count() })
+                    .Select(g => new
+                    {
+                        Date = g.Key,
+                        Count = g
+                            .Select(t => t.TransactionRef != null ? t.TransactionRef.Trim() : null)
+                            .Where(r => !string.IsNullOrWhiteSpace(r))
+                            .Distinct()
+                            .Count()
+                    })
                     .ToListAsync();
 
                 model.DailyTransactionCounts = workingDates
